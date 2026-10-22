@@ -1,0 +1,19 @@
+# Local credentials and environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Installed dependencies and generated output
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+**/uploads/
+
+# Local Vercel project metadata
+**/.vercel/
+
+# Logs and OS files
+**/*.log
+Thumbs.db
+.DS_Store
