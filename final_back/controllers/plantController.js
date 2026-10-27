@@ -7,6 +7,7 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODELS = [...new Set([
   process.env.OPENROUTER_MODEL || "google/gemma-4-26b-a4b-it:free",
   process.env.OPENROUTER_FALLBACK_MODEL || "nvidia/nemotron-3.5-super-vl:free",
+  "openrouter/free",
 ])]
 const PLANT_PROMPT = `Carefully inspect the attached photo. Identify the plant, assess visible health symptoms, and distinguish observations from guesses. Return exactly one valid JSON object, no markdown. Use Kazakh for all text values except scientificName. Never force an identification: if uncertain, use commonName "Белгісіз", scientificName "Белгісіз", lower accuracy, and explain what extra photo/detail is needed. accuracy is a subjective model confidence estimate, not measured scientific accuracy. Do not claim a disease is certain from one image. Give the top three candidate taxa (or fewer if genuinely uncertain), a differential diagnosis, low-risk care steps, and one question at a time. If you can visually localize a symptom, return a normalized rectangle [x,y,width,height] in 0..1000 relative to the image. Do not fabricate region boxes if no symptom is clearly visible.
 {

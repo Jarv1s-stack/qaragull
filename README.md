@@ -27,7 +27,7 @@ Open-Meteo мен iNaturalist ашық деректері пайдаланыла
 
 ### 3. OpenRouter
 
-[OpenRouter API key](https://openrouter.ai/keys) жасап, OPENROUTER_API_KEY мәніне қойыңыз. Ол Pl@ntNet анықтауынан кейінгі симптом мен күтім талдауын орындайды. Әдепкі vision-модель — суреттерді қабылдайтын тегін google/gemma-4-26b-a4b-it:free; жауап бос не қате болса, nvidia/nemotron-3.5-super-vl:free моделіне ауысады ([Gemma 4](https://openrouter.ai/google/gemma-4-26b-a4b-it:free), [Nemotron Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free)). Тегін модельдер шектеулі әрі уақытша істемей қалуы мүмкін. API кілті backend-та ғана сақталуы керек.
+[OpenRouter API key](https://openrouter.ai/keys) жасап, OPENROUTER_API_KEY мәніне қойыңыз. Ол Pl@ntNet анықтауынан кейінгі симптом мен күтім талдауын орындайды. Әдепкі vision-модель — суреттерді қабылдайтын тегін google/gemma-4-26b-a4b-it:free; жауап бос не шектеу қатесі болса, код nvidia/nemotron-3.5-super-vl:free моделіне, одан кейін суретті түсіне алатын тегін endpoint-ті өзі таңдайтын openrouter/free бағытына өтеді ([Gemma 4](https://openrouter.ai/google/gemma-4-26b-a4b-it:free), [Nemotron Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free), [OpenRouter free model router](https://openrouter.ai/openrouter/free)). Ашық модельдер уақытша істемей қалуы мүмкін; API кілті backend-та ғана сақталады.
 
 ### 4. Жергілікті іске қосу
 
