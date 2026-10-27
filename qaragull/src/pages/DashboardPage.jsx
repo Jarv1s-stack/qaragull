@@ -79,7 +79,7 @@ const DashboardPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+      <div className="app-page dashboard-page">
         <Navbar />
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-600"></div>
@@ -89,7 +89,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="app-page dashboard-page">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -115,14 +115,14 @@ const DashboardPage = () => {
         </div>
 
         {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="dashboard-stats grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="card bg-gradient-to-r from-green-500 to-green-600 text-white border-0 p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100 text-sm">Жалпы сканерлеу</p>
                 <p className="text-3xl font-bold">{stats.totalScans}</p>
                 <p className="text-green-200 text-xs mt-1">
-                  {stats.totalScans > 0 ? "+2 осы аптада" : "Бастау үшін сканерлеңіз"}
+                  {stats.thisWeek > 0 ? stats.thisWeek + " осы аптада" : "Бастау үшін сканерлеңіз"}
                 </p>
               </div>
               <div className="relative">
@@ -180,7 +180,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Enhanced Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="dashboard-shortcuts grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Link to="/scan" className="group">
             <div className="card hover:shadow-xl transition-all duration-300 cursor-pointer border-0 shadow-md group-hover:scale-105 bg-gradient-to-br from-green-50 to-green-100">
               <div className="p-6 text-center">

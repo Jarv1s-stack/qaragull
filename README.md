@@ -1,4 +1,4 @@
-# Qaragull — Supabase және OpenRouter нұсқасы
+# Qaragull — Қазақстан өсімдіктерінің цифрлық атласы
 
 Бұл бумада екі жоба бар:
 
@@ -21,11 +21,15 @@ Backend Supabase Data API арқылы secret key көмегімен дерек�
 
 Open-Meteo мен iNaturalist ашық деректері пайдаланылады. Атлас дерегі 1 сағатқа кэштеледі. Датчик пен жылыжайдың demo мәндері және ЭКГ-дің мысал толқыны синтетикалық деп белгіленеді; Serial-дан келген электр сигналы диагноз болып саналмайды. Термокамера арқылы стресс есептеу қосылмады, себебі калибрленген жылулық датчик қажет. 3D өсімдік — фотограмметрия емес, параметрден жасалған жуық көрініс. Профильдегі бақылау белгісі соңғы скандардағы AI болжамдарын санайды, ғылыми нашарлау болжамы емес.
 
-### 2. OpenRouter
+### 2. Өсімдік түрін тану: Pl@ntNet
 
-[OpenRouter API key](https://openrouter.ai/keys) жасап, `OPENROUTER_API_KEY` мәніне қойыңыз. Әдепкі vision-модель — суреттерді қабылдайтын тегін `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`; жауап бос не қате болса, код `nvidia/nemotron-3.5-super-vl:free` моделіне ауысады ([Nemotron Nano Omni](https://openrouter.ai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free), [Nemotron Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free)). Тегін endpoint-тер шектеулі әрі уақытша істемей қалуы мүмкін. NVIDIA тегін endpoint-інің деректерді өңдеу шарттарын ескеріп, жеке не құпия фотоларды жібермеңіз.
+[Pl@ntNet API](https://my.plantnet.org/) арқылы тегін API кілтін жасап, backend баптауындағы PLANTNET_API_KEY айнымалысына қойыңыз. Тегін лимиті тәулігіне 500 түр анықтауға дейін. Pl@ntNet арнайы өсімдік тану жүйесі; кілт қосылмаса, сайт OpenRouter-дің vision моделіне автоматты ауысады. Pl@ntNet суретті жедел жадта өңдейді, ал сұрау тарихына кескін URL-ін тіркейді ([қолдану шарттары](https://my.plantnet.org/terms_of_use)).
 
-### 3. Жергілікті іске қосу
+### 3. OpenRouter
+
+[OpenRouter API key](https://openrouter.ai/keys) жасап, OPENROUTER_API_KEY мәніне қойыңыз. Ол Pl@ntNet анықтауынан кейінгі симптом мен күтім талдауын орындайды. Әдепкі vision-модель — суреттерді қабылдайтын тегін google/gemma-4-26b-a4b-it:free; жауап бос не қате болса, nvidia/nemotron-3.5-super-vl:free моделіне ауысады ([Gemma 4](https://openrouter.ai/google/gemma-4-26b-a4b-it:free), [Nemotron Super VL](https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free)). Тегін модельдер шектеулі әрі уақытша істемей қалуы мүмкін. API кілті backend-та ғана сақталуы керек.
+
+### 4. Жергілікті іске қосу
 
 Backend:
 
@@ -54,7 +58,7 @@ Frontend `.env` файлында `VITE_API_URL=/api` болуы керек. Vite
 2. Сол репозиторийден екі Vercel project жасаңыз:
    - Frontend: Root Directory `qaragull`, Framework `Vite`, Build Command `npm run build`, Output Directory `dist`.
    - Backend: Root Directory `final_back`, Framework `Express`.
-3. Backend Vercel жобасының Production және Preview ортасына мына айнымалыларды қосыңыз: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET=plant-images`, `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL`, `JWT_SECRET` (кемінде 32 таңба), `NODE_ENV=production`, `CLIENT_URL`, `OPENROUTER_SITE_URL`. Құпия кілттерді тек Vercel Environment Variables ішіне енгізіңіз; `VITE_` префиксі бар айнымалыға құпия кілт қоймаңыз.
+3. Backend Vercel жобасының Production және Preview ортасына мына айнымалыларды қосыңыз: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET=plant-images`, `PLANTNET_API_KEY` (міндетті емес, өсімдік тануды жақсарту үшін), `OPENROUTER_API_KEY`, `OPENROUTER_MODEL=google/gemma-4-26b-a4b-it:free`, `OPENROUTER_FALLBACK_MODEL=nvidia/nemotron-3.5-super-vl:free`, `JWT_SECRET` (кемінде 32 таңба), `NODE_ENV=production`, `CLIENT_URL`, `OPENROUTER_SITE_URL`. Құпия кілттерді тек Vercel Environment Variables ішіне енгізіңіз; `VITE_` префиксі бар айнымалыға құпия кілт қоймаңыз.
 4. Backend URL анық болған соң frontend project-ке `VITE_API_URL=https://<backend-project>.vercel.app/api` деп қойып, қайта deploy жасаңыз. Backend-та `CLIENT_URL=https://<frontend-project>.vercel.app` және `OPENROUTER_SITE_URL` мәндерін frontend-тің нақты доменіне қойып, backend-ті қайта deploy жасаңыз.
 
 API Vercel-дің Express serverless function-ы ретінде жұмыс істейді. Сурет жүктеу шегі — 4 MB: Vercel Functions бір сұрауды 4.5 MB-пен шектейді.
@@ -62,9 +66,9 @@ API Vercel-дің Express serverless function-ы ретінде жұмыс іс�
 ## Ескертулер
 
 - Бұл нұсқа Supabase-та жаңа схема жасайды. Бұрынғы Render дерекқорындағы пайдаланушылар мен скан тарихы автоматты түрде көшірілмейді.
-- AI қайтарған `accuracy` — модельдің субъектив сенімділік бағасы; нақты сынақпен өлшенген дәлдік емес. AI қатесі болса, жалған нәтиже сақталмайды.
+- Түр тану нәтижесіндегі accuracy — Pl@ntNet қосылса оның сәйкестік балы, әйтпесе LLM бағасы. Екеуі де Qaragull-дың өз сынағымен өлшенген дәлдік емес. OpenRouter қолжетімсіз болса, Pl@ntNet түр нәтижесі сақталып, денсаулық диагнозы белгісіз болып қалады.
 - Жаңа суреттер жабық Supabase Storage-та сақталады. Интерфейске берілетін signed URL 24 сағат жарамды.
 
 ## Тексеру
 
-Frontend build нәтижесін тексеріп, Supabase байланысын backend-тің `/api/health` бағыты арқылы растаңыз. OpenRouter-дің тегін моделі уақытша қолжетімсіз болуы немесе сұрау шектеуіне түсуі мүмкін.
+Frontend build және lint-ті іске қосыңыз; Supabase байланысын backend-тің `/api/health` бағыты арқылы растаңыз. OpenRouter тегін модельдері уақытша қолжетімсіз болуы немесе сұрау шектеуіне түсуі мүмкін.

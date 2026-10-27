@@ -378,7 +378,7 @@ const ScanPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="app-page scan-page">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -390,7 +390,7 @@ const ScanPage = () => {
                 <h1 className="text-2xl font-bold mb-2">Өсімдік суретін жүктеңіз</h1>
                 <p className="text-gray-600 mb-6">Өсімдіктің анық суретін таңдаңыз, түсіріңіз немесе жүктеңіз</p>
                 <p className="text-xs text-gray-500 max-w-2xl mx-auto mb-6">
-                  Сурет OpenRouter арқылы сыртқы AI-провайдерге жіберіледі. Тегін модель сұрауларды журналдап, өнімін жақсартуға қолдануы мүмкін; жеке не құпия суреттерді жүктемеңіз.
+                  Сурет түрді тану үшін Pl@ntNet-ке (кілт қосылса), ал белгілер мен күтімді талдау үшін OpenRouter-ге жіберілуі мүмкін. Құпия суреттерді жүктемеңіз.
                 </p>
 
                 {error && (
@@ -454,21 +454,28 @@ const ScanPage = () => {
                     {/* Файл жүктеу опциялары */}
                     <div className="grid md:grid-cols-2 gap-4">
                       {/* Файл жүктеу */}
-                      <div
-                        className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
+                      <label htmlFor="plant-image-upload" className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer">
                         <Upload className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-800 mb-2">Файл жүктеу</h3>
                         <p className="text-gray-600 text-sm">Галереядан немесе компьютерден сурет таңдаңыз</p>
                         <p className="text-xs text-gray-400 mt-2">PNG, JPG, WebP, GIF (макс. 4 MB)</p>
-                      </div>
+                      </label>
 
                       {/* Drag & Drop */}
                       <div
                         className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-400 transition-colors"
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
+                        onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            fileInputRef.current?.click()
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Сурет файлын таңдау немесе сүйреп әкелу"
                       >
                         <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-gray-800 mb-2">Drag & Drop</h3>
@@ -479,10 +486,11 @@ const ScanPage = () => {
 
                     <input
                       ref={fileInputRef}
+                      id="plant-image-upload"
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
                       onChange={handleFileSelect}
-                      className="hidden"
+                      className="sr-only"
                     />
                   </div>
                 )}
@@ -559,13 +567,14 @@ const ScanPage = () => {
                     <div>
                       <h3 className="text-2xl font-bold text-gray-800">{plantInfo.commonName}</h3>
                       <p className="text-lg text-gray-600 italic">{plantInfo.scientificName}</p>
+                      <span className="source-chip">Түрді тану: {plantInfo.identificationSource || "OpenRouter"}</span>
                     </div>
                     <p className="text-gray-700 leading-relaxed">{plantInfo.description}</p>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        {plantInfo.accuracy == null ? "Бағаланбаған" : `${plantInfo.accuracy}% AI сенімділігі`}
+                        {plantInfo.accuracy == null ? "Сәйкестік балы жоқ" : `${plantInfo.accuracy}% сәйкестік балы`}
                       </span>
-                      <span className="text-xs text-gray-500">AI-дың субъектив бағасы, сынақпен өлшенген дәлдік емес</span>
+                      <span className="text-xs text-gray-500">Модельдің сәйкестік бағасы; ғылыми өлшенген дәлдік емес</span>
                     </div>
                   </div>
                 </div>
@@ -593,6 +602,7 @@ const ScanPage = () => {
             <div className="card p-5 border border-gray-100 shadow-md"><div className="flex items-center justify-between gap-3 flex-wrap"><div><h2 className="font-semibold text-gray-800">Белгісіз түрді тексеруге жіберу</h2><p className="text-xs text-gray-500 mt-1">Өтініш жеке кезекке сақталады; әзірге қосылған сарапшы жауабы жоқ.</p></div><button className="btn btn-secondary" onClick={sendForReview}>Тексеру кезегіне қосу</button></div>{reviewMessage && <p className="text-sm text-green-800 mt-3" role="status">{reviewMessage}</p>}</div>
 
             <div className="text-xs text-gray-500">Қарап шығуға арналған дереккөздер: <a className="text-green-700 underline" href="https://www.inaturalist.org/" target="_blank" rel="noreferrer">iNaturalist түр деректері</a>, <a className="text-green-700 underline" href="https://www.rhs.org.uk/" target="_blank" rel="noreferrer">Royal Horticultural Society күтім нұсқаулығы</a>, <a className="text-green-700 underline" href="https://eppo.int/" target="_blank" rel="noreferrer">EPPO өсімдік денсаулығы</a>. Сілтемелер кеңеске дәлел емес, тек маманмен салыстыруға арналған.</div>
+            {plantInfo.identificationSource === "Pl@ntNet" && <div className="plantnet-credit"><a className="plantnet-logo" href="https://my.plantnet.org/" target="_blank" rel="noreferrer"><img src="https://my.plantnet.org/images/plantnet-logo-title-white.png" alt="Pl@ntNet" loading="lazy" /></a><p>The image-based plant species identification service used, is based on the <a href="https://my.plantnet.org/" target="_blank" rel="noreferrer">Pl@ntNet recognition API</a>, regularly updated and accessible through the site https://my.plantnet.org/.</p></div>}
 
             {/* Plant Care Information */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">

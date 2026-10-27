@@ -43,7 +43,8 @@ app.get("/api/health", async (req, res) => {
     return res.json({
       status: "OK",
       database: "connected",
-      aiConfigured: Boolean(process.env.OPENROUTER_API_KEY),
+      aiConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.PLANTNET_API_KEY),
+      plantnetConfigured: Boolean(process.env.PLANTNET_API_KEY),
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || "development",

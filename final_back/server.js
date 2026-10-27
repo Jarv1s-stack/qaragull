@@ -9,7 +9,9 @@ const start = async () => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     throw new Error("JWT_SECRET must contain at least 32 characters.")
   }
-  if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is required.")
+  if (!process.env.OPENROUTER_API_KEY && !process.env.PLANTNET_API_KEY) {
+    throw new Error("At least one AI provider must be configured: OPENROUTER_API_KEY or PLANTNET_API_KEY.")
+  }
 
   await createTables()
   await ensureBucket()

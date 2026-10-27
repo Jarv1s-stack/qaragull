@@ -43,18 +43,22 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="auth-page">
+      <div className="auth-layout">
+        <aside className="auth-aside">
+          <Link to="/" className="brand-lockup"><span className="brand-symbol"><Leaf size={20} /></span><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
+          <div className="auth-aside-art"><span>QG / FIELD NOTES</span><Leaf size={112} strokeWidth={0.8} /></div>
+          <p className="eyebrow">ТАБИҒАТТЫ БАЙҚА · БІЛІМДІ ЖИНА</p>
+          <h2>Әр бақылау<br />маңызды.</h2>
+          <p>Қазақстан флорасын танып, жеке далалық дәптеріңді жалғастыр.</p>
+        </aside>
+      <div className="auth-form-column">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="auth-brand-head">
           <Link to="/" className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 mb-4">
             <ArrowLeft className="w-4 h-4" />
             Артқа қайту
           </Link>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Leaf className="w-8 h-8 text-green-600" />
-            <span className="text-2xl font-bold text-gray-800">Qaragull</span>
-          </div>
           <h1 className="text-3xl font-bold text-gray-800">Кіру</h1>
           <p className="text-gray-600 mt-2">Аккаунтыңызға кіріңіз</p>
         </div>
@@ -112,6 +116,8 @@ const LoginPage = () => {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    aria-label={showPassword ? "Құпия сөзді жасыру" : "Құпия сөзді көрсету"}
+                    aria-pressed={showPassword}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -133,6 +139,7 @@ const LoginPage = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

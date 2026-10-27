@@ -5,7 +5,7 @@ const { uploadImage, createImageUrl, deleteImage } = require("../services/storag
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 const MODELS = [...new Set([
-  process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  process.env.OPENROUTER_MODEL || "google/gemma-4-26b-a4b-it:free",
   process.env.OPENROUTER_FALLBACK_MODEL || "nvidia/nemotron-3.5-super-vl:free",
 ])]
 const PLANT_PROMPT = `Carefully inspect the attached photo. Identify the plant, assess visible health symptoms, and distinguish observations from guesses. Return exactly one valid JSON object, no markdown. Use Kazakh for all text values except scientificName. Never force an identification: if uncertain, use commonName "Белгісіз", scientificName "Белгісіз", lower accuracy, and explain what extra photo/detail is needed. accuracy is a subjective model confidence estimate, not measured scientific accuracy. Do not claim a disease is certain from one image. Give the top three candidate taxa (or fewer if genuinely uncertain), a differential diagnosis, low-risk care steps, and one question at a time. If you can visually localize a symptom, return a normalized rectangle [x,y,width,height] in 0..1000 relative to the image. Do not fabricate region boxes if no symptom is clearly visible.
@@ -41,10 +41,74 @@ const parseJsonResponse = (content) => {
   return parsed
 }
 
-const analyzePlant = async (file) => {
-  if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not configured")
+const identifyWithPlantNet = async (file) => {
+  const apiKey = process.env.PLANTNET_API_KEY
+  if (!apiKey || !["image/jpeg", "image/png"].includes(file.mimetype)) return null
+
+  const form = new FormData()
+  form.append("images", new Blob([file.buffer], { type: file.mimetype }), file.originalname || "plant.jpg")
+  const params = new URLSearchParams({ "nb-results": "3", lang: "en" })
+  const url = "https://my-api.plantnet.org/v2/identify/all?" + params.toString() + "&api-key=" + encodeURIComponent(apiKey)
+  const response = await fetch(url, { method: "POST", body: form, signal: AbortSignal.timeout(25_000) })
+  if (!response.ok) {
+    const error = new Error("Pl@ntNet returned " + response.status)
+    error.status = response.status
+    throw error
+  }
+
+  const result = await response.json()
+  const candidates = (Array.isArray(result.results) ? result.results : []).slice(0, 3).map((item) => {
+    const species = item.species || {}
+    const score = Number(item.score)
+    return {
+      commonName: String(species.commonNames?.[0] || species.scientificNameWithoutAuthor || species.scientificName || "Unknown").slice(0, 255),
+      scientificName: String(species.scientificName || species.scientificNameWithoutAuthor || "Unknown").slice(0, 255),
+      confidence: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score * 100))) : null,
+      reason: "Pl@ntNet кескін сәйкестігі",
+    }
+  }).filter((candidate) => candidate.scientificName !== "Unknown")
+  if (!candidates.length) return null
+
+  return {
+    candidates,
+    version: String(result.version || "").slice(0, 100),
+    remainingRequests: Number.isFinite(Number(result.remainingIdentificationRequests)) ? Number(result.remainingIdentificationRequests) : null,
+  }
+}
+
+const plantNetOnlyAnalysis = (speciesEvidence) => {
+  const top = speciesEvidence.candidates[0]
+  const isUnknown = top.confidence != null && top.confidence < 15
+  return {
+    commonName: top.commonName,
+    scientificName: top.scientificName,
+    description: "Түр атауы Pl@ntNet кескін сәйкестігі арқылы ұсынылды. Нәтижені басқа ботаникалық дереккөзбен тексеріңіз.",
+    origin: "Түрге тән дерек берілмеді.",
+    sunlight: "Өсімдіктің нақты түрін растаған соң жарық талабын тексеріңіз.",
+    water: "Топырақтың жағдайын бақылаңыз; түрі расталмайынша суару кестесін болжамаңыз.",
+    growthRate: "Дерек берілмеді.",
+    accuracy: top.confidence,
+    isUnknown,
+    candidates: speciesEvidence.candidates,
+    diagnosis: { status: "unknown", issue: "Денсаулық белгісі бағаланбады", confidence: null, reason: "AI кеңес қызметі уақытша қолжетімсіз.", carePlan: [] },
+    regions: [],
+    followUpQuestions: [],
+    identificationSource: "Pl@ntNet",
+    identificationVersion: speciesEvidence.version,
+    remainingIdentificationRequests: speciesEvidence.remainingRequests,
+  }
+}
+
+const analyzePlant = async (file, speciesEvidence = null) => {
+  if (!process.env.OPENROUTER_API_KEY) {
+    if (speciesEvidence) return plantNetOnlyAnalysis(speciesEvidence)
+    throw new Error("OPENROUTER_API_KEY is not configured")
+  }
 
   const imageData = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`
+  const plantEvidencePrompt = speciesEvidence
+    ? "\n\nТүрді анықтау бойынша арнайы Pl@ntNet жүйесінің нәтижесі: " + JSON.stringify(speciesEvidence.candidates) + ". Негізгі міндетің — денсаулық белгілері мен қауіпсіз күтімді талдау. scientificName және candidates мәндерін дәл осы арнайы жүйеден алынған дерекпен толтыр; commonName-ге алғашқы кандидаттың қазақша атауын жазуға болады, бірақ тек сенімді білсең. Латынша атауларды өзгертпе."
+    : ""
   let lastError
   for (const model of MODELS) {
     try {
@@ -54,18 +118,14 @@ const analyzePlant = async (file) => {
           model,
           temperature: 0.2,
           max_tokens: 1500,
-          ...(model.includes("nemotron-3-nano-omni")
-            ? { reasoning: { enabled: false } }
-            : {
-                response_format: { type: "json_object" },
-                ...(model.includes("nemotron-3.5-super-vl") ? { reasoning: { enabled: false } } : {}),
-              }),
+          response_format: { type: "json_object" },
+          ...(model.includes("nemotron-3.5-super-vl") ? { reasoning: { enabled: false } } : {}),
           messages: [
             { role: "system", content: "You are a careful botanist. Return only the requested JSON object." },
             {
               role: "user",
               content: [
-                { type: "text", text: PLANT_PROMPT },
+                { type: "text", text: PLANT_PROMPT + plantEvidencePrompt },
                 { type: "image_url", image_url: { url: imageData } },
               ],
             },
@@ -83,7 +143,7 @@ const analyzePlant = async (file) => {
       )
       const parsed = parseJsonResponse(response.data?.choices?.[0]?.message?.content)
       const accuracy = parsed.accuracy == null ? Number.NaN : Number(parsed.accuracy)
-      return {
+      const normalized = {
         commonName: String(parsed.commonName || "Белгісіз өсімдік").slice(0, 255),
         scientificName: String(parsed.scientificName || "Белгісіз").slice(0, 255),
         description: String(parsed.description || "Сипаттама берілмеді."),
@@ -115,6 +175,23 @@ const analyzePlant = async (file) => {
         }).filter(Boolean) : [],
         followUpQuestions: Array.isArray(parsed.followUpQuestions) ? parsed.followUpQuestions.slice(0, 3).map((item) => String(item).slice(0, 300)) : [],
       }
+      if (!speciesEvidence) return { ...normalized, identificationSource: "OpenRouter" }
+
+      const top = speciesEvidence.candidates[0]
+      const expectedName = top.scientificName.toLowerCase().replace(/\s+/g, " ").trim()
+      const modelName = normalized.scientificName.toLowerCase().replace(/\s+/g, " ").trim()
+      const modelMatchesPlantNet = modelName === expectedName || modelName.startsWith(expectedName) || expectedName.startsWith(modelName)
+      return {
+        ...normalized,
+        commonName: modelMatchesPlantNet && !normalized.isUnknown ? normalized.commonName : top.commonName,
+        scientificName: top.scientificName,
+        accuracy: top.confidence,
+        isUnknown: top.confidence != null && top.confidence < 15,
+        candidates: speciesEvidence.candidates,
+        identificationSource: "Pl@ntNet",
+        identificationVersion: speciesEvidence.version,
+        remainingIdentificationRequests: speciesEvidence.remainingRequests,
+      }
     } catch (error) {
       lastError = error
       if ([401, 402].includes(error.response?.status)) break
@@ -143,6 +220,8 @@ const serializeScan = async (scan) => ({
   diagnosis: scan.diagnosis || {},
   regions: scan.affected_regions || [],
   followUpQuestions: scan.follow_up_questions || [],
+  identificationSource: scan.diagnosis?.identificationSource || "OpenRouter",
+  identificationVersion: scan.diagnosis?.identificationVersion || null,
   createdAt: scan.created_at,
 })
 
@@ -157,7 +236,22 @@ const identifyPlant = async (req, res) => {
 
   let storagePath
   try {
-    const plant = await analyzePlant(req.file)
+    let speciesEvidence = null
+    if (process.env.PLANTNET_API_KEY) {
+      try {
+        speciesEvidence = await identifyWithPlantNet(req.file)
+      } catch (error) {
+        console.error("Pl@ntNet identification unavailable:", error.status || error.message)
+      }
+    }
+    let plant
+    try {
+      plant = await analyzePlant(req.file, speciesEvidence)
+    } catch (error) {
+      if (!speciesEvidence) throw error
+      console.error("OpenRouter analysis unavailable; keeping Pl@ntNet identification:", error.response?.status || error.message)
+      plant = plantNetOnlyAnalysis(speciesEvidence)
+    }
     const extensionByMime = {
       "image/jpeg": ".jpg",
       "image/png": ".png",
@@ -181,7 +275,13 @@ const identifyPlant = async (req, res) => {
         water: plant.water,
         growth_rate: plant.growthRate,
         accuracy: plant.accuracy,
-        diagnosis: { ...plant.diagnosis, isUnknown: plant.isUnknown },
+        diagnosis: {
+          ...plant.diagnosis,
+          isUnknown: plant.isUnknown,
+          identificationSource: plant.identificationSource,
+          identificationVersion: plant.identificationVersion || null,
+          remainingIdentificationRequests: plant.remainingIdentificationRequests ?? null,
+        },
         species_candidates: plant.candidates,
         affected_regions: plant.regions,
         follow_up_questions: plant.followUpQuestions,

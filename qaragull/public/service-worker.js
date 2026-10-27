@@ -1,4 +1,4 @@
-const CACHE = "qaragull-shell-v1"
+const CACHE = "qaragull-shell-v2"
 const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/leaf.svg"]
 
 self.addEventListener("install", (event) => {
