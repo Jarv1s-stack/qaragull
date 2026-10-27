@@ -107,7 +107,7 @@ const HomePage = () => {
               className="flex items-center gap-2 text-2xl font-bold text-gray-800 hover:text-green-600 transition-colors"
             >
               <Leaf className="w-8 h-8 text-green-600" />
-              <span>PlantID</span>
+              <span>Qaragull</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -326,7 +326,7 @@ const HomePage = () => {
           <div className="container mx-auto px-6">
             <FadeInElement className="text-center mb-12 sm:mb-16">
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-                Неге PlantID таңдау керек?
+                Неге Qaragull таңдау керек?
               </h2>
               <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
                 Өсімдік сүйгіштер үшін барлық қажетті мүмкіндіктер бір жерде
@@ -466,7 +466,7 @@ const HomePage = () => {
                 {
                   name: "Елена В.",
                   quote:
-                    "PlantID-ті тауларда серуендеу кезінде пайдаланамын. Біздің өлкенің жабайы табиғаты туралы көп жаңа нәрсе үйрендім. Барлығына ұсынамын!",
+                    "Qaragull-ті тауларда серуендеу кезінде пайдаланамын. Біздің өлкенің жабайы табиғаты туралы көп жаңа нәрсе үйрендім. Барлығына ұсынамын!",
                   avatar: "https://i.pravatar.cc/150?img=5",
                   rating: 5,
                   role: "Табиғат зерттеушісі",
@@ -536,7 +536,7 @@ const HomePage = () => {
             <div className="sm:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <Leaf className="w-6 sm:w-8 h-6 sm:h-8 text-green-400" />
-                <span className="text-xl sm:text-2xl font-bold">PlantID</span>
+                <span className="text-xl sm:text-2xl font-bold">Qaragull</span>
               </div>
               <p className="text-gray-400 mb-4 sm:mb-6 max-w-md text-sm sm:text-base">
                 AI технологиясы арқылы өсімдіктерді анықтайтын ең жақсы қосымша. Табиғатты зерттеп, білімдеріңізді
@@ -622,7 +622,7 @@ const HomePage = () => {
 
           <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-800 text-center text-gray-500">
             <p className="text-sm sm:text-base">
-              &copy; {new Date().getFullYear()} PlantID. Барлық құқықтар қорғалған.
+              &copy; {new Date().getFullYear()} Qaragull. Барлық құқықтар қорғалған.
             </p>
           </div>
         </div>

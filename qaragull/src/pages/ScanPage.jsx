@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { plantsAPI } from "../services/api"
+import { labAPI, plantsAPI } from "../services/api"
 import Navbar from "../components/Navbar"
 import {
   Camera,
@@ -30,6 +30,9 @@ const ScanPage = () => {
   const [capturedImage, setCapturedImage] = useState(null)
   const [facingMode, setFacingMode] = useState("environment") // "user" for front, "environment" for back
   const [isMobile, setIsMobile] = useState(false)
+  const [followUpAnswer, setFollowUpAnswer] = useState("")
+  const [isRefining, setIsRefining] = useState(false)
+  const [reviewMessage, setReviewMessage] = useState("")
 
   const fileInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -230,10 +233,35 @@ const ScanPage = () => {
     setPreviewUrl(null)
     setPlantInfo(null)
     setError("")
+    setFollowUpAnswer("")
+    setReviewMessage("")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }
+
+  const handleFollowUp = async (event) => {
+    event.preventDefault()
+    if (!followUpAnswer.trim() || !plantInfo?.id) return
+    setIsRefining(true)
+    setReviewMessage("")
+    try {
+      const { data } = await plantsAPI.refineDiagnosis(plantInfo.id, followUpAnswer)
+      setPlantInfo({ ...plantInfo, diagnosis: data.diagnosis, followUpQuestions: data.followUpQuestions })
+      setFollowUpAnswer("")
+    } catch (requestError) {
+      setReviewMessage(requestError.response?.data?.error || "Қосымша диагноз сұрауы орындалмады")
+    } finally { setIsRefining(false) }
+  }
+
+  const sendForReview = async () => {
+    try {
+      await labAPI.requestExpertReview({ scanId: plantInfo.id, question: "AI жауабы белгісіз немесе сенімділігі төмен; ботаникке тексеруге жіберу." })
+      setReviewMessage("Тексеруге сұрау жеке кезекке сақталды. Қазір бұл кезек нақты маманға автоматты түрде қосылмаған.")
+    } catch (requestError) { setReviewMessage(requestError.response?.data?.error || "Сұрауды сақтау мүмкін болмады") }
+  }
+
+  const isProtectedPlant = [plantInfo?.scientificName, plantInfo?.commonName].some((name) => ["tulipa greigii", "tulipa kaufmanniana", "tulipa regelii", "malus sieversii", "грейг қызғалдағы", "кауфман қызғалдағы", "регель қызғалдағы", "сиверс алмасы"].some((protectedName) => String(name || "").toLowerCase().includes(protectedName)))
 
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -515,12 +543,17 @@ const ScanPage = () => {
                 <p className="text-gray-600 mb-6">AI арқылы анықталған ақпарат</p>
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="relative h-64 rounded-lg overflow-hidden bg-gray-100">
+                  <div className="flex items-center justify-center rounded-lg overflow-hidden bg-gray-100 min-h-64 max-h-[420px]">
+                    <div className="relative inline-block max-w-full">
                     <img
                       src={plantInfo.imageUrl || previewUrl}
                       alt="Scanned plant"
-                      className="w-full h-full object-cover"
+                      className="block max-h-[420px] max-w-full object-contain"
                     />
+                    {plantInfo.regions?.length > 0 && <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="AI белгілеген ықтимал зақым аймақтары">
+                      {plantInfo.regions.map((region, index) => <g key={`${region.label}-${index}`}><rect x={region.x} y={region.y} width={region.width} height={region.height} fill="rgba(210,90,61,.16)" stroke="#c25336" strokeWidth="5" vectorEffect="non-scaling-stroke" /><text x={region.x + 8} y={Math.max(20, region.y + 24)} fill="#fff" stroke="#633421" strokeWidth="3" paintOrder="stroke" fontSize="24">{index + 1}. {region.label}</text></g>)}
+                    </svg>}
+                    </div>
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -528,15 +561,38 @@ const ScanPage = () => {
                       <p className="text-lg text-gray-600 italic">{plantInfo.scientificName}</p>
                     </div>
                     <p className="text-gray-700 leading-relaxed">{plantInfo.description}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                         {plantInfo.accuracy == null ? "Бағаланбаған" : `${plantInfo.accuracy}% AI сенімділігі`}
                       </span>
+                      <span className="text-xs text-gray-500">AI-дың субъектив бағасы, сынақпен өлшенген дәлдік емес</span>
                     </div>
                   </div>
                 </div>
+                {plantInfo.regions?.length > 0 && <div className="mt-4 text-sm text-orange-800 bg-orange-50 rounded-lg p-3">Суреттегі қызыл жиектер — модель болжаған ықтимал белгі аймақтары. Оларды өлшенген зақым шекарасы деп қабылдамаңыз.</div>}
+                {isProtectedPlant && <div className="mt-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-4"><strong>Қорғалатын түр болуы мүмкін.</strong> Өсімдікті жұлмаңыз және орналасқан жерін жарияламаңыз. Түрді жергілікті маманнан растаңыз.</div>}
               </div>
             </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="card p-5 border border-gray-100 shadow-md">
+                <h2 className="font-semibold text-gray-800 mb-3">Ықтимал үш түр</h2>
+                {plantInfo.candidates?.length ? <ol className="space-y-3">{plantInfo.candidates.map((candidate, index) => <li key={`${candidate.scientificName}-${index}`} className="flex gap-3 text-sm"><span className="w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-800 font-semibold">{index + 1}</span><span><strong className="block">{candidate.commonName} <em className="font-normal text-gray-500">{candidate.scientificName}</em></strong><span className="text-xs text-gray-600">{candidate.confidence == null ? "Сенімділік көрсетілмеген" : `Модель бағасы ${candidate.confidence}%`} · {candidate.reason || "Түсіндірме берілмеді"}</span></span></li>)}</ol> : <p className="text-sm text-gray-600">Модель балама түрлерді сенімді ажырата алмады. Нақты түрге күштеп теңемей, қосымша анық фото түсіріңіз.</p>}
+                {plantInfo.isUnknown && <div className="mt-3 text-xs text-amber-800 bg-amber-50 p-3 rounded-lg">Белгісіз режим: модель дәлел жеткіліксіз екенін белгіледі.</div>}
+              </div>
+              <div className="card p-5 border border-gray-100 shadow-md">
+                <h2 className="font-semibold text-gray-800 mb-3">Денсаулық бойынша болжам</h2>
+                <div className={`rounded-lg p-3 text-sm ${plantInfo.diagnosis?.status === "possible_issue" ? "bg-amber-50 text-amber-900" : "bg-green-50 text-green-900"}`}><strong>{plantInfo.diagnosis?.issue || "Белгісіз"}</strong><p className="mt-1">{plantInfo.diagnosis?.reason || "Көрнекі диагноз берілмеді."}</p><small>{plantInfo.diagnosis?.confidence == null ? "Сенімділік бағасы жоқ" : `Субъектив AI бағасы: ${plantInfo.diagnosis.confidence}%`}</small></div>
+                {plantInfo.diagnosis?.carePlan?.length > 0 && <ul className="list-disc pl-5 mt-3 text-xs text-gray-700 space-y-1">{plantInfo.diagnosis.carePlan.map((step, index) => <li key={index}>{step}</li>)}</ul>}
+                <p className="text-xs text-gray-500 mt-3">Бұл — фотодағы көрініске сүйенген алдын ала болжам. Химиялық препаратты диагноз расталмай қолданбаңыз.</p>
+              </div>
+            </div>
+
+            {plantInfo.followUpQuestions?.length > 0 && <div className="card p-5 border border-gray-100 shadow-md"><h2 className="font-semibold text-gray-800 mb-2">Себебін ажыратуға көмектесіңіз</h2><p className="text-sm text-gray-600 mb-3">{plantInfo.followUpQuestions[0]}</p><form onSubmit={handleFollowUp} className="flex flex-col sm:flex-row gap-3"><input className="input" value={followUpAnswer} onChange={(event) => setFollowUpAnswer(event.target.value)} maxLength={500} placeholder="Қысқаша жауап" /><button className="btn btn-primary" disabled={isRefining || !followUpAnswer.trim()}>{isRefining ? "Талдауда…" : "Жауапты салыстыру"}</button></form><p className="text-xs text-gray-500 mt-2">Жауап мәтіні OpenRouter AI-ға жіберіледі. Жеке дерек жазбаңыз.</p></div>}
+
+            <div className="card p-5 border border-gray-100 shadow-md"><div className="flex items-center justify-between gap-3 flex-wrap"><div><h2 className="font-semibold text-gray-800">Белгісіз түрді тексеруге жіберу</h2><p className="text-xs text-gray-500 mt-1">Өтініш жеке кезекке сақталады; әзірге қосылған сарапшы жауабы жоқ.</p></div><button className="btn btn-secondary" onClick={sendForReview}>Тексеру кезегіне қосу</button></div>{reviewMessage && <p className="text-sm text-green-800 mt-3" role="status">{reviewMessage}</p>}</div>
+
+            <div className="text-xs text-gray-500">Қарап шығуға арналған дереккөздер: <a className="text-green-700 underline" href="https://www.inaturalist.org/" target="_blank" rel="noreferrer">iNaturalist түр деректері</a>, <a className="text-green-700 underline" href="https://www.rhs.org.uk/" target="_blank" rel="noreferrer">Royal Horticultural Society күтім нұсқаулығы</a>, <a className="text-green-700 underline" href="https://eppo.int/" target="_blank" rel="noreferrer">EPPO өсімдік денсаулығы</a>. Сілтемелер кеңеске дәлел емес, тек маманмен салыстыруға арналған.</div>
 
             {/* Plant Care Information */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">

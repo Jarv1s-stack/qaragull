@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit")
 const { checkConnection } = require("./config/database")
 const authRoutes = require("./routes/auth")
 const plantsRoutes = require("./routes/plants")
+const labRoutes = require("./routes/lab")
 
 const app = express()
 const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
@@ -34,6 +35,7 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }))
 if (!process.env.VERCEL) app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 app.use("/api/auth", authRoutes)
 app.use("/api/plants", plantsRoutes)
+app.use("/api/lab", labRoutes)
 
 app.get("/api/health", async (req, res) => {
   try {

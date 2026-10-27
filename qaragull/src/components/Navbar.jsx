@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Leaf, Menu, X, User, LogOut } from "lucide-react"
+import { Leaf, Menu, X, User, LogOut, FlaskConical } from "lucide-react"
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -26,7 +26,7 @@ const Navbar = () => {
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2">
             <Leaf className="w-8 h-8 text-primary-600" />
-            <span className="text-2xl font-bold text-gray-800">PlantID</span>
+            <span className="text-2xl font-bold text-gray-800">Qaragull</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -60,6 +60,16 @@ const Navbar = () => {
               }`}
             >
               Тарих
+            </Link>
+            <Link
+              to="/lab"
+              className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                isActive("/lab")
+                  ? "text-primary-600 bg-primary-50"
+                  : "text-gray-600 hover:text-primary-600 hover:bg-gray-100"
+              }`}
+            >
+              <FlaskConical className="w-4 h-4 inline mr-1" /> Зертхана
             </Link>
 
             {/* Profile Dropdown */}
@@ -152,6 +162,17 @@ const Navbar = () => {
                 }`}
               >
                 Профиль
+              </Link>
+              <Link
+                to="/lab"
+                onClick={() => setIsMenuOpen(false)}
+                className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                  isActive("/lab")
+                    ? "text-primary-600 bg-primary-50"
+                    : "text-gray-600 hover:text-primary-600 hover:bg-gray-100"
+                }`}
+              >
+                <FlaskConical className="w-4 h-4 inline mr-1" /> Зертхана
               </Link>
               <button
                 onClick={handleLogout}

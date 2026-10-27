@@ -53,7 +53,7 @@ const LoginPage = () => {
           </Link>
           <div className="flex items-center justify-center gap-2 mb-4">
             <Leaf className="w-8 h-8 text-green-600" />
-            <span className="text-2xl font-bold text-gray-800">PlantID</span>
+            <span className="text-2xl font-bold text-gray-800">Qaragull</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-800">Кіру</h1>
           <p className="text-gray-600 mt-2">Аккаунтыңызға кіріңіз</p>

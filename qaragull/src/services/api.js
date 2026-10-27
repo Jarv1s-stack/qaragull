@@ -95,6 +95,22 @@ export const plantsAPI = {
   getScanById: (id) => {
     return api.get(`/plants/scans/${id}`)
   },
+  refineDiagnosis: (id, answer) => api.post(`/plants/scans/${id}/follow-up`, { answer }, { timeout: 30000 }),
+}
+
+export const labAPI = {
+  getProfiles: () => api.get("/lab/profiles"),
+  createProfile: (data) => api.post("/lab/profiles", data),
+  getCareEvents: (profileId) => api.get(`/lab/care-events?profileId=${encodeURIComponent(profileId)}`),
+  createCareEvent: (data) => api.post("/lab/care-events", data),
+  getReadings: () => api.get("/lab/readings"),
+  createReading: (data) => api.post("/lab/readings", data),
+  getExperiments: () => api.get("/lab/experiments"),
+  createExperiment: (data) => api.post("/lab/experiments", data),
+  createMeasurement: (data) => api.post("/lab/measurements", data),
+  getCommunity: () => api.get("/lab/community"),
+  createCommunityObservation: (data) => api.post("/lab/community", data),
+  requestExpertReview: (data) => api.post("/lab/expert-review", data),
 }
 
 export default api

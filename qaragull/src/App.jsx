@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { Suspense, lazy } from "react"
 import { AuthProvider } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 
@@ -10,6 +11,7 @@ import DashboardPage from "./pages/DashboardPage"
 import ScanPage from "./pages/ScanPage"
 import HistoryPage from "./pages/HistoryPage"
 import ProfilePage from "./pages/ProfilePage"
+const LabPage = lazy(() => import("./pages/LabPage"))
 
 function App() {
   return (
@@ -52,6 +54,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lab"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<div className="min-h-screen grid place-items-center text-green-800">Зертхана ашылуда…</div>}>
+                    <LabPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />

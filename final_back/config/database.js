@@ -24,7 +24,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 })
 
 const createTables = async () => {
-  for (const table of ["users", "plant_scans"]) {
+  for (const table of ["users", "plant_scans", "plant_profiles", "care_events", "sensor_readings", "experiments", "experiment_measurements", "community_observations", "expert_reviews"]) {
     const { error } = await supabase.from(table).select("id", { head: true }).limit(1)
     if (error) {
       throw new Error(

@@ -5,7 +5,7 @@ import { Link } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { plantsAPI } from "../services/api"
 import Navbar from "../components/Navbar"
-import { Camera, History, User, Leaf, Scan, TrendingUp, Clock, Star, Award, Target, Zap, Calendar } from "lucide-react"
+import { Camera, History, User, Leaf, Scan, TrendingUp, Clock, Star, Award, Target, Zap, Calendar, FlaskConical } from "lucide-react"
 
 const DashboardPage = () => {
   const { user } = useAuth()
@@ -73,7 +73,7 @@ const DashboardPage = () => {
     } else if (stats.totalScans < 50) {
       return "Сіз нағыз өсімдік сарапшысы болып келесіз! 🌳"
     } else {
-      return "Сіз PlantID шебері! Өз білімдеріңізбен бөлісіңіз! 🏆"
+      return "Сіз Qaragull шебері! Өз білімдеріңізбен бөлісіңіз! 🏆"
     }
   }
 
@@ -180,7 +180,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Enhanced Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Link to="/scan" className="group">
             <div className="card hover:shadow-xl transition-all duration-300 cursor-pointer border-0 shadow-md group-hover:scale-105 bg-gradient-to-br from-green-50 to-green-100">
               <div className="p-6 text-center">
@@ -215,6 +215,17 @@ const DashboardPage = () => {
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">👤 Профиль</h3>
                 <p className="text-gray-600">Жеке ақпараттарды басқару</p>
                 <div className="mt-3 text-sm text-purple-600 font-medium">Профильді өзгерту →</div>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/lab" className="group">
+            <div className="card h-full hover:shadow-xl transition-all duration-300 cursor-pointer border-0 shadow-md group-hover:scale-105 bg-gradient-to-br from-amber-50 to-lime-100">
+              <div className="p-6 text-center">
+                <FlaskConical className="w-16 h-16 text-amber-700 mx-auto mb-4 group-hover:scale-110 transition-transform duration-300" />
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">🌱 Өсімдік зертханасы</h3>
+                <p className="text-gray-600">Өмірбаян, датчик, карта және тәжірибелер</p>
+                <div className="mt-3 text-sm text-amber-800 font-medium">Зертханаға өту →</div>
               </div>
             </div>
           </Link>

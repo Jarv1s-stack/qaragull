@@ -7,6 +7,7 @@ const {
   getScanById,
   deleteScan,
   getUserStats,
+  refineDiagnosis,
 } = require("../controllers/plantController")
 
 const router = express.Router()
@@ -16,5 +17,6 @@ router.get("/scans", auth, getUserScans)
 router.get("/scans/:id", auth, getScanById)
 router.delete("/scans/:id", auth, deleteScan)
 router.get("/stats", auth, getUserStats)
+router.post("/scans/:id/follow-up", auth, refineDiagnosis)
 
 module.exports = router

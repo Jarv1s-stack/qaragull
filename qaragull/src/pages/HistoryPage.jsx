@@ -131,8 +131,8 @@ const HistoryPage = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `PlantID: ${item.commonName}`,
-          text: `Мен ${item.commonName} (${item.scientificName}) өсімдігін PlantID арқылы анықтадым!`,
+          title: `Qaragull: ${item.commonName}`,
+          text: `Мен ${item.commonName} (${item.scientificName}) өсімдігін Qaragull арқылы анықтадым!`,
           url: window.location.href,
         })
       } catch {
