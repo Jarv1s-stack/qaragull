@@ -44,6 +44,14 @@ export const authAPI = {
     return api.post("/auth/register", { fullName, email, password })
   },
 
+  verifyRegistration: (fullName, email, password, token) => {
+    return api.post("/auth/verify-registration", { fullName, email, password, token })
+  },
+
+  resendRegistrationCode: (email) => {
+    return api.post("/auth/resend-registration-code", { email })
+  },
+
   login: (email, password) => {
     return api.post("/auth/login", { email, password })
   },

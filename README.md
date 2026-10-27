@@ -13,7 +13,9 @@
 
 Supabase жобасының URL-і мен backend үшін **secret/service-role key** керек. `final_back/.env.example` файлын `.env` деп көшіріп, осы мәндерді толтырыңыз. Secret key тек backend-та сақталуы керек; оны сайтқа немесе GitHub-қа салмаңыз. `SUPABASE_SERVICE_ROLE_KEY` атауы да қолдау табады.
 
-Backend Supabase Data API арқылы secret key көмегімен дерекқордан оқып, жазады, сондықтан `DATABASE_URL` немесе дерекқор құпиясөзі қажет емес. Код Supabase Auth емес, `JWT_SECRET` арқылы өзінің токендерін шығарады; `SUPABASE_PUBLISHABLE_KEY` пен `SUPABASE_JWKS_URL` пайдаланылмайды.
+Backend Supabase Data API арқылы secret key көмегімен дерекқордан оқып, жазады, сондықтан `DATABASE_URL` немесе дерекқор құпиясөзі қажет емес. Қолданба өзінің `JWT_SECRET` токендерін пайдаланады; Supabase Auth тек жаңа тіркелген адамның email-ын растау кодын тексеруге қолданылады. `SUPABASE_PUBLISHABLE_KEY` пен `SUPABASE_JWKS_URL` backend-ке қажет емес.
+
+Email арқылы тіркелу үшін Supabase Dashboard → Authentication → Sign In / Providers ішіндегі Email confirmation қосулы болсын. Authentication → Email Templates → Confirm signup үлгісінде `{{ .Token }}` айнымалысын қалдырыңыз/қосыңыз: сайт email-ға келген кодты сұрайды. Әдепкі пошта сервері тек ұйым командасының email-дарына жібереді және сағатына 2 хатпен шектелген; басқа адамдарға хат жіберу үшін Authentication → SMTP Settings ішінен SMTP провайдерін қосыңыз.
 
 Жаңа Supabase жобасында SQL Editor-де `final_back/supabase/schema.sql` файлын бір рет орындаңыз. Бұрыннан жұмыс істеп тұрған жобада қосымша кестелерді сақтау үшін тек `final_back/supabase/migrations/20261027_field_lab.sql` migration-ын орындаңыз. Одан кейін `npm run db:setup` кестелерді тексеріп, `plant-images` атты private Storage bucket-ін жасайды.
 

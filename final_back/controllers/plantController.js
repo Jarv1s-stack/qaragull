@@ -9,7 +9,7 @@ const MODELS = [...new Set([
   process.env.OPENROUTER_FALLBACK_MODEL || "nvidia/nemotron-3.5-super-vl:free",
   "openrouter/free",
 ])]
-const PLANT_PROMPT = `Carefully inspect the attached photo. Identify the plant, assess visible health symptoms, and distinguish observations from guesses. Return exactly one valid JSON object, no markdown. Use Kazakh for all text values except scientificName. Never force an identification: if uncertain, use commonName "Белгісіз", scientificName "Белгісіз", lower accuracy, and explain what extra photo/detail is needed. accuracy is a subjective model confidence estimate, not measured scientific accuracy. Do not claim a disease is certain from one image. Give the top three candidate taxa (or fewer if genuinely uncertain), a differential diagnosis, low-risk care steps, and one question at a time. If you can visually localize a symptom, return a normalized rectangle [x,y,width,height] in 0..1000 relative to the image. Do not fabricate region boxes if no symptom is clearly visible.
+const PLANT_PROMPT = `Carefully inspect the attached photo. Identify the plant, assess visible health symptoms, and distinguish observations from guesses. Return exactly one valid JSON object, no markdown. Use Kazakh for all text values except scientificName. Never force an identification: if uncertain, use commonName "Белгісіз", scientificName "Белгісіз", lower accuracy, and explain what extra photo/detail is needed. For accuracy, candidate confidence, and diagnosis confidence, always use a decimal fraction from 0.0 to 1.0 (for example 0.72 means 72%, and 0.08 means 8%); never return a whole-number percentage. These are subjective model confidence estimates, not measured scientific accuracy. Do not claim a disease is certain from one image. Give the top three candidate taxa (or fewer if genuinely uncertain), a differential diagnosis, low-risk care steps, and one question at a time. If you can visually localize a symptom, return a normalized rectangle [x,y,width,height] in 0..1000 relative to the image. Do not fabricate region boxes if no symptom is clearly visible.
 {
   "commonName": "өсімдіктің қазақша атауы",
   "scientificName": "латынша ғылыми атауы",
@@ -41,6 +41,20 @@ const parseJsonResponse = (content) => {
   if (missingFields.length) throw new Error(`OpenRouter JSON is missing plant fields: ${missingFields.join(", ")}`)
   return parsed
 }
+
+const normalizeModelConfidence = (value) => {
+  if (value == null || value === "") return null
+  const number = Number(value)
+  if (!Number.isFinite(number)) return null
+  const percent = Math.abs(number) <= 1 ? number * 100 : number
+  return Math.min(100, Math.max(0, Math.round(percent)))
+}
+
+const normalizeStoredConfidence = (value, source) => source === "OpenRouter"
+  ? normalizeModelConfidence(value)
+  : value == null || !Number.isFinite(Number(value))
+    ? null
+    : Math.min(100, Math.max(0, Math.round(Number(value))))
 
 const identifyWithPlantNet = async (file) => {
   const apiKey = process.env.PLANTNET_API_KEY
@@ -143,7 +157,7 @@ const analyzePlant = async (file, speciesEvidence = null) => {
         },
       )
       const parsed = parseJsonResponse(response.data?.choices?.[0]?.message?.content)
-      const accuracy = parsed.accuracy == null ? Number.NaN : Number(parsed.accuracy)
+      const accuracy = normalizeModelConfidence(parsed.accuracy)
       const normalized = {
         commonName: String(parsed.commonName || "Белгісіз өсімдік").slice(0, 255),
         scientificName: String(parsed.scientificName || "Белгісіз").slice(0, 255),
@@ -152,20 +166,20 @@ const analyzePlant = async (file, speciesEvidence = null) => {
         sunlight: String(parsed.sunlight || "Белгісіз").slice(0, 255),
         water: String(parsed.water || "Белгісіз").slice(0, 255),
         growthRate: String(parsed.growthRate || "Белгісіз").slice(0, 255),
-        accuracy: Number.isFinite(accuracy) ? Math.min(100, Math.max(0, Math.round(accuracy))) : null,
-        isUnknown: parsed.isUnknown === true || String(parsed.commonName || "").toLowerCase().includes("белгісіз"),
+        accuracy,
+        isUnknown: parsed.isUnknown === true || String(parsed.commonName || "").toLowerCase().includes("белгісіз") || (accuracy != null && accuracy < 15),
         candidates: Array.isArray(parsed.candidates)
           ? parsed.candidates.slice(0, 3).map((candidate) => ({
               commonName: String(candidate.commonName || "Белгісіз").slice(0, 255),
               scientificName: String(candidate.scientificName || "Белгісіз").slice(0, 255),
-              confidence: Number.isFinite(Number(candidate.confidence)) ? Math.min(100, Math.max(0, Math.round(Number(candidate.confidence)))) : null,
+              confidence: normalizeModelConfidence(candidate.confidence),
               reason: String(candidate.reason || "").slice(0, 500),
             }))
           : [],
         diagnosis: parsed.diagnosis && typeof parsed.diagnosis === "object" ? {
           status: ["healthy", "possible_issue", "unknown"].includes(parsed.diagnosis.status) ? parsed.diagnosis.status : "unknown",
           issue: String(parsed.diagnosis.issue || "Белгісіз").slice(0, 255),
-          confidence: Number.isFinite(Number(parsed.diagnosis.confidence)) ? Math.min(100, Math.max(0, Math.round(Number(parsed.diagnosis.confidence)))) : null,
+          confidence: normalizeModelConfidence(parsed.diagnosis.confidence),
           reason: String(parsed.diagnosis.reason || "").slice(0, 1000),
           carePlan: Array.isArray(parsed.diagnosis.carePlan) ? parsed.diagnosis.carePlan.slice(0, 6).map((item) => String(item).slice(0, 500)) : [],
         } : { status: "unknown", issue: "Белгісіз", confidence: null, reason: "AI диагноз бермеді.", carePlan: [] },
@@ -205,26 +219,34 @@ const analyzePlant = async (file, speciesEvidence = null) => {
   throw lastError
 }
 
-const serializeScan = async (scan) => ({
-  id: scan.id,
-  imageUrl: scan.storage_path ? await createImageUrl(scan.storage_path) : scan.image_url,
-  commonName: scan.common_name,
-  scientificName: scan.scientific_name,
-  description: scan.description,
-  origin: scan.origin,
-  sunlight: scan.sunlight,
-  water: scan.water,
-  growthRate: scan.growth_rate,
-  accuracy: scan.accuracy,
-  isUnknown: Boolean(scan.diagnosis?.isUnknown),
-  candidates: scan.species_candidates || [],
-  diagnosis: scan.diagnosis || {},
-  regions: scan.affected_regions || [],
-  followUpQuestions: scan.follow_up_questions || [],
-  identificationSource: scan.diagnosis?.identificationSource || "OpenRouter",
-  identificationVersion: scan.diagnosis?.identificationVersion || null,
-  createdAt: scan.created_at,
-})
+const serializeScan = async (scan) => {
+  const identificationSource = scan.diagnosis?.identificationSource || "OpenRouter"
+  const diagnosis = scan.diagnosis || {}
+  return {
+    id: scan.id,
+    imageUrl: scan.storage_path ? await createImageUrl(scan.storage_path) : scan.image_url,
+    commonName: scan.common_name,
+    scientificName: scan.scientific_name,
+    description: scan.description,
+    origin: scan.origin,
+    sunlight: scan.sunlight,
+    water: scan.water,
+    growthRate: scan.growth_rate,
+    accuracy: normalizeStoredConfidence(scan.accuracy, identificationSource),
+    isUnknown: Boolean(diagnosis.isUnknown),
+    candidates: Array.isArray(scan.species_candidates) ? scan.species_candidates.map((candidate) => ({
+      ...candidate,
+      confidence: normalizeStoredConfidence(candidate.confidence, identificationSource),
+    })) : [],
+    diagnosis: { ...diagnosis, confidence: normalizeStoredConfidence(diagnosis.confidence, identificationSource) },
+    regions: scan.affected_regions || [],
+    followUpQuestions: scan.follow_up_questions || [],
+    identificationSource,
+    identificationVersion: diagnosis.identificationVersion || null,
+    identificationNotice: diagnosis.identificationNotice || null,
+    createdAt: scan.created_at,
+  }
+}
 
 const parseScanId = (value) => {
   if (!/^\d+$/.test(String(value))) return null
@@ -238,12 +260,21 @@ const identifyPlant = async (req, res) => {
   let storagePath
   try {
     let speciesEvidence = null
+    let identificationNotice = process.env.PLANTNET_API_KEY
+      ? null
+      : "Pl@ntNet кілті қосылмаған; түрді OpenRouter AI бағалады."
     if (process.env.PLANTNET_API_KEY) {
       try {
         speciesEvidence = await identifyWithPlantNet(req.file)
       } catch (error) {
         console.error("Pl@ntNet identification unavailable:", error.status || error.message)
+        identificationNotice = error.status === 401 || error.status === 403
+          ? "Pl@ntNet кілтін тексеру қажет; түрді OpenRouter AI бағалады."
+          : error.status === 429
+            ? "Pl@ntNet сұрау шегіне жетті; түрді OpenRouter AI бағалады."
+            : "Pl@ntNet уақытша қолжетімсіз; түрді OpenRouter AI бағалады."
       }
+      if (!speciesEvidence && !identificationNotice) identificationNotice = "Pl@ntNet бұл суреттен түр ұсына алмады; түрді OpenRouter AI бағалады."
     }
     let plant
     try {
@@ -252,7 +283,9 @@ const identifyPlant = async (req, res) => {
       if (!speciesEvidence) throw error
       console.error("OpenRouter analysis unavailable; keeping Pl@ntNet identification:", error.response?.status || error.message)
       plant = plantNetOnlyAnalysis(speciesEvidence)
+      identificationNotice = "Pl@ntNet түрді ұсынды, бірақ денсаулық талдауы уақытша қолжетімсіз."
     }
+    plant.identificationNotice = identificationNotice
     const extensionByMime = {
       "image/jpeg": ".jpg",
       "image/png": ".png",
@@ -282,6 +315,7 @@ const identifyPlant = async (req, res) => {
           identificationSource: plant.identificationSource,
           identificationVersion: plant.identificationVersion || null,
           remainingIdentificationRequests: plant.remainingIdentificationRequests ?? null,
+          identificationNotice: plant.identificationNotice || null,
         },
         species_candidates: plant.candidates,
         affected_regions: plant.regions,

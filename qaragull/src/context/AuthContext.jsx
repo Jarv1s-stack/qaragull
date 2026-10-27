@@ -56,7 +56,9 @@ export const AuthProvider = ({ children }) => {
   const register = async (fullName, email, password) => {
     try {
       const response = await authAPI.register(fullName, email, password)
-      const { token: newToken, user: userData } = response.data
+      const { token: newToken, user: userData, requiresEmailVerification } = response.data
+
+      if (requiresEmailVerification) return { success: true, requiresEmailVerification: true }
 
       setToken(newToken)
       setUser(userData)
@@ -65,6 +67,32 @@ export const AuthProvider = ({ children }) => {
       return { success: true }
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Тіркелу кезінде қате орын алды"
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const verifyRegistration = async (fullName, email, password, code) => {
+    try {
+      const response = await authAPI.verifyRegistration(fullName, email, password, code)
+      const { token: newToken, user: userData } = response.data
+
+      setToken(newToken)
+      setUser(userData)
+      localStorage.setItem("token", newToken)
+
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Email-ды растау кезінде қате орын алды"
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  const resendRegistrationCode = async (email) => {
+    try {
+      await authAPI.resendRegistrationCode(email)
+      return { success: true }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Email кодын қайта жіберу кезінде қате орын алды"
       return { success: false, error: errorMessage }
     }
   }
@@ -113,6 +141,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
+    verifyRegistration,
+    resendRegistrationCode,
     logout,
     updateProfile,
     uploadAvatar,

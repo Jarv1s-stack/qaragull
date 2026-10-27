@@ -544,44 +544,49 @@ const ScanPage = () => {
           </div>
         ) : (
           /* Results Section */
-          <div className="space-y-6">
-            <div className="card border-0 shadow-lg">
+          <div className="space-y-6 scan-results">
+            <section className="card border-0 shadow-lg scan-result-primary">
               <div className="p-6">
-                <h1 className="text-2xl font-bold text-green-600 mb-2">🎉 Өсімдік анықталды!</h1>
-                <p className="text-gray-600 mb-6">AI арқылы анықталған ақпарат</p>
+                <header className="scan-result-heading">
+                  <p className="eyebrow">AI ӨСІМДІК ТАЛДАУЫ</p>
+                  <h1>Талдау нәтижесі</h1>
+                  <p>Суретке сүйенген түр мен денсаулық бағасы</p>
+                </header>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="flex items-center justify-center rounded-lg overflow-hidden bg-gray-100 min-h-64 max-h-[420px]">
+                <div className="grid md:grid-cols-2 gap-6 scan-result-overview">
+                  <div className="flex items-center justify-center rounded-lg overflow-hidden bg-gray-100 min-h-64 max-h-[420px] scan-result-image">
                     <div className="relative inline-block max-w-full">
                     <img
                       src={plantInfo.imageUrl || previewUrl}
-                      alt="Scanned plant"
-                      className="block max-h-[420px] max-w-full object-contain"
+                      alt={`${plantInfo.commonName || "Өсімдік"} суреті`}
+                      className="block max-h-[420px] max-w-full object-contain scan-result-photo"
                     />
                     {plantInfo.regions?.length > 0 && <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="AI белгілеген ықтимал зақым аймақтары">
                       {plantInfo.regions.map((region, index) => <g key={`${region.label}-${index}`}><rect x={region.x} y={region.y} width={region.width} height={region.height} fill="rgba(210,90,61,.16)" stroke="#c25336" strokeWidth="5" vectorEffect="non-scaling-stroke" /><text x={region.x + 8} y={Math.max(20, region.y + 24)} fill="#fff" stroke="#633421" strokeWidth="3" paintOrder="stroke" fontSize="24">{index + 1}. {region.label}</text></g>)}
                     </svg>}
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-4 scan-result-summary">
                     <div>
-                      <h3 className="text-2xl font-bold text-gray-800">{plantInfo.commonName}</h3>
+                      <h2 className="text-2xl font-bold text-gray-800">{plantInfo.commonName}</h2>
                       <p className="text-lg text-gray-600 italic">{plantInfo.scientificName}</p>
                       <span className="source-chip">Түрді тану: {plantInfo.identificationSource || "OpenRouter"}</span>
                     </div>
                     <p className="text-gray-700 leading-relaxed">{plantInfo.description}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                        {plantInfo.accuracy == null ? "Сәйкестік балы жоқ" : `${plantInfo.accuracy}% сәйкестік балы`}
+                    <div className="scan-confidence">
+                      <span className="scan-confidence-value">
+                        {plantInfo.accuracy == null ? "Баға жоқ" : `${plantInfo.accuracy}%`}
                       </span>
-                      <span className="text-xs text-gray-500">Модельдің сәйкестік бағасы; ғылыми өлшенген дәлдік емес</span>
+                      <span><strong>AI сенімділік бағасы</strong><small>Ғылыми өлшенген дәлдік емес</small></span>
                     </div>
+                    {plantInfo.accuracy != null && plantInfo.accuracy < 15 && <p className="scan-low-confidence" role="status">Сенімділік төмен. Гүлін не жапырағын жақыннан, фокуста қайта түсіріп көріңіз.</p>}
+                    {plantInfo.identificationNotice && <p className="scan-identification-notice" role="note">{plantInfo.identificationNotice}</p>}
                   </div>
                 </div>
                 {plantInfo.regions?.length > 0 && <div className="mt-4 text-sm text-orange-800 bg-orange-50 rounded-lg p-3">Суреттегі қызыл жиектер — модель болжаған ықтимал белгі аймақтары. Оларды өлшенген зақым шекарасы деп қабылдамаңыз.</div>}
                 {isProtectedPlant && <div className="mt-4 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-4"><strong>Қорғалатын түр болуы мүмкін.</strong> Өсімдікті жұлмаңыз және орналасқан жерін жарияламаңыз. Түрді жергілікті маманнан растаңыз.</div>}
               </div>
-            </div>
+            </section>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="card p-5 border border-gray-100 shadow-md">

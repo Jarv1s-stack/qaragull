@@ -1,233 +1,170 @@
-"use client"
-
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Leaf, Eye, EyeOff, User, Mail, Lock, ArrowLeft } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Leaf, Lock, Mail, User } from "lucide-react"
 
 const RegisterPage = () => {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
+  const [formData, setFormData] = useState({ fullName: "", email: "", password: "", confirmPassword: "" })
+  const [stage, setStage] = useState("details")
+  const [verificationCode, setVerificationCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
+  const [notice, setNotice] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const { register } = useAuth()
+  const { register, verifyRegistration, resendRegistrationCode } = useAuth()
   const navigate = useNavigate()
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
-    }
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setFormData((current) => ({ ...current, [name]: value }))
+    if (errors[name] || errors.general) setErrors((current) => ({ ...current, [name]: "", general: "" }))
   }
 
   const validateForm = () => {
-    const newErrors = {}
-
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Толық атыңызды енгізіңіз"
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email мекенжайын енгізіңіз"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Дұрыс email мекенжайын енгізіңіз"
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Құпия сөзді енгізіңіз"
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Құпия сөз кемінде 6 таңбадан тұруы керек"
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Құпия сөздер сәйкес келмейді"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    const nextErrors = {}
+    if (formData.fullName.trim().length < 2) nextErrors.fullName = "Толық аты кемінде 2 таңбадан тұруы керек"
+    if (!/\S+@\S+\.\S+/.test(formData.email.trim())) nextErrors.email = "Дұрыс email мекенжайын енгізіңіз"
+    if (formData.password.length < 6) nextErrors.password = "Құпия сөз кемінде 6 таңбадан тұруы керек"
+    if (formData.password !== formData.confirmPassword) nextErrors.confirmPassword = "Құпия сөздер сәйкес келмейді"
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     if (!validateForm()) return
 
     setIsLoading(true)
     setErrors({})
-
-    try {
-      const result = await register(formData.fullName, formData.email, formData.password)
-      if (result.success) {
-        navigate("/dashboard")
-      } else {
-        setErrors({ general: result.error })
-      }
-    } catch (error) {
-      setErrors({ general: "Тіркелу кезінде қате орын алды" })
-    } finally {
-      setIsLoading(false)
+    setNotice("")
+    const result = await register(formData.fullName.trim(), formData.email.trim(), formData.password)
+    if (!result.success) {
+      setErrors({ general: result.error })
+    } else if (result.requiresEmailVerification) {
+      setStage("verify")
+      setNotice("Растау кодын email поштаңыздан қараңыз. Хат көрінбесе, Spam бумасын тексеріңіз.")
+    } else {
+      navigate("/dashboard")
     }
+    setIsLoading(false)
+  }
+
+  const handleVerify = async (event) => {
+    event.preventDefault()
+    if (!/^\d{6,8}$/.test(verificationCode)) {
+      setErrors({ code: "Email-дағы 6–8 таңбалы кодты енгізіңіз" })
+      return
+    }
+
+    setIsLoading(true)
+    setErrors({})
+    setNotice("")
+    const result = await verifyRegistration(
+      formData.fullName.trim(),
+      formData.email.trim(),
+      formData.password,
+      verificationCode,
+    )
+    if (result.success) navigate("/dashboard")
+    else setErrors({ general: result.error })
+    setIsLoading(false)
+  }
+
+  const handleResend = async () => {
+    setIsLoading(true)
+    setErrors({})
+    setNotice("")
+    const result = await resendRegistrationCode(formData.email.trim())
+    if (result.success) setNotice("Жаңа код жіберілді. Email мен Spam бумасын тексеріңіз.")
+    else setErrors({ general: result.error })
+    setIsLoading(false)
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-layout">
-        <aside className="auth-aside">
-          <Link to="/" className="brand-lockup"><span className="brand-symbol"><Leaf size={20} /></span><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
-          <div className="auth-aside-art"><span>QG / FIELD NOTES</span><Leaf size={112} strokeWidth={0.8} /></div>
-          <p className="eyebrow">ЖЕКЕ ДАЛАЛЫҚ ДӘПТЕРІҢ</p>
-          <h2>Алғашқы<br />бақылауыңнан баста.</h2>
-          <p>Өсімдіктерді анықта, тарихын сақта және уақыт өте жаңа дерек жина.</p>
-        </aside>
-      <div className="auth-form-column">
-        {/* Header */}
-        <div className="auth-brand-head">
-          <Link to="/" className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 mb-4">
-            <ArrowLeft className="w-4 h-4" />
-            Артқа қайту
+    <main className="auth-page">
+      <section className="auth-layout" aria-labelledby="register-title">
+        <div className="auth-form-column">
+          <Link to="/" className="brand-lockup auth-brand-lockup">
+            <span className="brand-symbol"><Leaf size={19} aria-hidden="true" /></span>
+            <span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-800">Тіркелу</h1>
-          <p className="text-gray-600 mt-2">Жаңа аккаунт жасаңыз</p>
-        </div>
 
-        <div className="card shadow-xl border-0">
-          <div className="p-6">
-            <div className="space-y-1 mb-6">
-              <h2 className="text-2xl font-semibold text-center">Аккаунт жасау</h2>
-              <p className="text-center text-gray-600">Өсімдіктер әлемін зерттеуді бастаңыз</p>
-            </div>
+          <header className="auth-brand-head">
+            <Link to="/" className="auth-back-link"><ArrowLeft size={15} aria-hidden="true" /> Басты бетке</Link>
+            <p className="eyebrow">ЖЕКЕ ДАЛАЛЫҚ ДӘПТЕРІҢ</p>
+            <h1 id="register-title">{stage === "verify" ? "Email-ды растаңыз" : "Тіркелу"}</h1>
+            <p>{stage === "verify" ? "Аккаунт жасау үшін email-ға келген кодты енгізіңіз." : "Өсімдіктерді танып, бақылау тарихын сақтаңыз."}</p>
+          </header>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {errors.general && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-red-600 text-sm">{errors.general}</p>
+          <div className="auth-form-content">
+            {errors.general && <div className="auth-message auth-message-error" role="alert">{errors.general}</div>}
+            {notice && <div className="auth-message auth-message-success" role="status">{notice}</div>}
+
+            {stage === "details" ? (
+              <form onSubmit={handleSubmit} className="auth-form" noValidate>
+                <div className="auth-field">
+                  <label htmlFor="fullName">Толық аты</label>
+                  <div className="auth-input-wrap">
+                    <User size={17} aria-hidden="true" />
+                    <input id="fullName" name="fullName" type="text" autoComplete="name" required maxLength={100} placeholder="Атыңыз бен тегіңіз" value={formData.fullName} onChange={handleChange} aria-invalid={Boolean(errors.fullName)} />
+                  </div>
+                  {errors.fullName && <p className="auth-field-error">{errors.fullName}</p>}
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                  Толық аты
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    required
-                    placeholder="Атыңыз мен тегіңіз"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className={`input pl-10 ${errors.fullName ? "border-red-500" : ""}`}
-                  />
+                <div className="auth-field">
+                  <label htmlFor="email">Email</label>
+                  <div className="auth-input-wrap">
+                    <Mail size={17} aria-hidden="true" />
+                    <input id="email" name="email" type="email" autoComplete="email" required maxLength={254} placeholder="name@example.com" value={formData.email} onChange={handleChange} aria-invalid={Boolean(errors.email)} />
+                  </div>
+                  {errors.email && <p className="auth-field-error">{errors.email}</p>}
                 </div>
-                {errors.fullName && <p className="text-sm text-red-600">{errors.fullName}</p>}
-              </div>
 
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="example@email.com"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`input pl-10 ${errors.email ? "border-red-500" : ""}`}
-                  />
+                <div className="auth-field">
+                  <label htmlFor="password">Құпия сөз</label>
+                  <div className="auth-input-wrap">
+                    <Lock size={17} aria-hidden="true" />
+                    <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" required minLength={6} placeholder="Кемінде 6 таңба" value={formData.password} onChange={handleChange} aria-invalid={Boolean(errors.password)} />
+                    <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Құпия сөзді жасыру" : "Құпия сөзді көрсету"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button>
+                  </div>
+                  {errors.password && <p className="auth-field-error">{errors.password}</p>}
                 </div>
-                {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
-              </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Құпия сөз
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    placeholder="Құпия сөзіңіз"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className={`input pl-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                    aria-label={showPassword ? "Құпия сөзді жасыру" : "Құпия сөзді көрсету"}
-                    aria-pressed={showPassword}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                <div className="auth-field">
+                  <label htmlFor="confirmPassword">Құпия сөзді қайталаңыз</label>
+                  <div className="auth-input-wrap">
+                    <Lock size={17} aria-hidden="true" />
+                    <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" required minLength={6} placeholder="Құпия сөзді қайталаңыз" value={formData.confirmPassword} onChange={handleChange} aria-invalid={Boolean(errors.confirmPassword)} />
+                    <button type="button" className="auth-password-toggle" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? "Құпия сөзді жасыру" : "Құпия сөзді көрсету"} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button>
+                  </div>
+                  {errors.confirmPassword && <p className="auth-field-error">{errors.confirmPassword}</p>}
                 </div>
-                {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
-              </div>
 
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  Құпия сөзді растау
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    required
-                    placeholder="Құпия сөзді қайталаңыз"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className={`input pl-10 pr-10 ${errors.confirmPassword ? "border-red-500" : ""}`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                    aria-label={showConfirmPassword ? "Құпия сөзді жасыру" : "Құпия сөзді көрсету"}
-                    aria-pressed={showConfirmPassword}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">{isLoading ? "Email тексерілуде…" : "Кодты email-ға жіберу"}</button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerify} className="auth-form" noValidate>
+                <div className="auth-email-target"><Mail size={17} aria-hidden="true" /><span>{formData.email}</span></div>
+                <div className="auth-field">
+                  <label htmlFor="verificationCode">Растау коды</label>
+                  <input id="verificationCode" name="verificationCode" className="input auth-code-input" type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus required minLength={6} maxLength={8} placeholder="000000" value={verificationCode} onChange={(event) => { setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 8)); setErrors({}) }} aria-invalid={Boolean(errors.code)} aria-describedby={errors.code ? "verification-error" : undefined} />
+                  {errors.code && <p id="verification-error" className="auth-field-error">{errors.code}</p>}
                 </div>
-                {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword}</p>}
-              </div>
+                <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">{isLoading ? "Тексерілуде…" : "Email-ды растау"}</button>
+                <div className="auth-code-actions">
+                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={handleResend}>Кодты қайта жіберу</button>
+                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={() => { setStage("details"); setErrors({}); setNotice("") }}>Email-ды өзгерту</button>
+                </div>
+              </form>
+            )}
 
-              <button type="submit" disabled={isLoading} className="btn btn-primary w-full">
-                {isLoading ? "Тіркелуде..." : "Тіркелу"}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Аккаунтыңыз бар ма?{" "}
-                <Link to="/login" className="text-green-600 hover:text-green-700 font-medium">
-                  Кіру
-                </Link>
-              </p>
-            </div>
+            <p className="auth-login-link">Аккаунтыңыз бар ма? <Link to="/login">Кіру</Link></p>
           </div>
         </div>
-      </div>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }
 
