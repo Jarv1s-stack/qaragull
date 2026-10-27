@@ -1,7 +1,8 @@
 const express = require("express") // Express кітапханасын қосу
 const { body } = require("express-validator") // express-validator кітапханасын қосу (мәліметтерді тексеру үшін)
-const { register, login, getProfile, updateProfile, changePassword } = require("../controllers/authController") // Контроллерлерді қосу
+const { register, login, getProfile, updateProfile, uploadAvatar, changePassword } = require("../controllers/authController") // Контроллерлерді қосу
 const auth = require("../middleware/auth") // Аутентификация middleware
+const upload = require("../middleware/upload")
 const router = express.Router() // Express маршруты
 
 // Тіркелу валидациясы
@@ -57,6 +58,7 @@ router.post("/register", registerValidation, register) // Тіркелу мар�
 router.post("/login", loginValidation, login) // Кіру маршруты
 router.get("/profile", auth, getProfile) // Профильді алу маршруты
 router.put("/profile", auth, updateProfileValidation, updateProfile) // Профильді жаңарту маршруты
+router.post("/avatar", auth, upload.single("avatar"), uploadAvatar)
 router.put("/change-password", auth, changePasswordValidation, changePassword) // Құпия сөзді өзгерту маршруты
 
 module.exports = router // Маршруттарды экспорттау

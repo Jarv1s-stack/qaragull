@@ -37,7 +37,7 @@ export default function Navbar() {
         </nav>
         <div className="app-account">
           <Link to="/profile" className="account-profile" aria-label="Профиль">
-            <span className="account-avatar"><UserRound size={16} /></span>
+            <span className="account-avatar">{user?.avatar ? <img src={user.avatar} alt="" /> : <UserRound size={16} />}</span>
             <span className="account-name">{user?.fullName || "Зерттеуші"}</span>
           </Link>
           <button type="button" className="logout-button" onClick={handleLogout} aria-label="Аккаунттан шығу" title="Шығу"><LogOut size={17} /></button>

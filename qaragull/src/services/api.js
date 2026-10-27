@@ -56,6 +56,12 @@ export const authAPI = {
     return api.put("/auth/profile", profileData)
   },
 
+  uploadAvatar: (file) => {
+    const formData = new FormData()
+    formData.append("avatar", file)
+    return api.post("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } })
+  },
+
   changePassword: (currentPassword, newPassword) => {
     return api.put("/auth/change-password", { currentPassword, newPassword })
   },

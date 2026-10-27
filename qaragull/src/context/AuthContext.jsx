@@ -86,6 +86,17 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const uploadAvatar = async (file) => {
+    try {
+      const response = await authAPI.uploadAvatar(file)
+      setUser(response.data.user)
+      return { success: true, user: response.data.user }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || "Профиль суретін сақтау кезінде қате орын алды"
+      return { success: false, error: errorMessage }
+    }
+  }
+
   const changePassword = async (currentPassword, newPassword) => {
     try {
       await authAPI.changePassword(currentPassword, newPassword)
@@ -104,6 +115,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    uploadAvatar,
     changePassword,
     isAuthenticated: !!token,
   }

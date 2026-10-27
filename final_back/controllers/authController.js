@@ -2,6 +2,21 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const { validationResult } = require("express-validator")
 const { supabase } = require("../config/database")
+const { uploadImage, createImageUrl, deleteImage } = require("../services/storage")
+const { randomUUID } = require("crypto")
+
+const avatarUrl = async (storedAvatar) => {
+  if (!storedAvatar) return null
+  if (!storedAvatar.startsWith("avatars/")) return storedAvatar
+  return createImageUrl(storedAvatar)
+}
+
+const clientUser = async (user) => ({
+  id: user.id,
+  fullName: user.full_name,
+  email: user.email,
+  avatar: await avatarUrl(user.avatar),
+})
 
 const register = async (req, res) => {
   try {
@@ -60,7 +75,7 @@ const login = async (req, res) => {
     return res.json({
       message: "Сәтті кірілді",
       token,
-      user: { id: user.id, fullName: user.full_name, email: user.email, avatar: user.avatar },
+      user: await clientUser(user),
     })
   } catch (error) {
     console.error("Кіру қатесі:", error.message)
@@ -77,7 +92,7 @@ const getProfile = async (req, res) => {
       .maybeSingle()
     if (error) throw error
     if (!user) return res.status(404).json({ error: "Қолданушы табылмады" })
-    return res.json({ user: { id: user.id, fullName: user.full_name, email: user.email, avatar: user.avatar } })
+    return res.json({ user: await clientUser(user) })
   } catch (error) {
     console.error("Профиль алу қатесі:", error.message)
     return res.status(500).json({ error: "Сервер қатесі" })
@@ -113,11 +128,48 @@ const updateProfile = async (req, res) => {
 
     return res.json({
       message: "Профиль сәтті жаңартылды",
-      user: { id: user.id, fullName: user.full_name, email: user.email, avatar: user.avatar },
+      user: await clientUser(user),
     })
   } catch (error) {
     console.error("Профиль жаңарту қатесі:", error.message)
     return res.status(500).json({ error: "Сервер қатесі" })
+  }
+}
+
+const uploadAvatar = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Профиль суретін таңдаңыз" })
+
+  const extension = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" })[req.file.mimetype]
+  const objectPath = `avatars/${req.user.id}/${randomUUID()}.${extension}`
+  let uploaded = false
+
+  try {
+    await uploadImage(objectPath, req.file)
+    uploaded = true
+
+    const { data: user, error } = await supabase
+      .from("users")
+      .update({ avatar: objectPath, updated_at: new Date().toISOString() })
+      .eq("id", req.user.id)
+      .select("id, full_name, email, avatar")
+      .maybeSingle()
+    if (error) throw error
+    if (!user) {
+      await deleteImage(objectPath).catch(() => {})
+      return res.status(404).json({ error: "Қолданушы табылмады" })
+    }
+
+    const signedAvatar = await avatarUrl(user.avatar)
+    const previousAvatar = req.user.avatar
+    if (previousAvatar?.startsWith("avatars/") && previousAvatar !== objectPath) {
+      deleteImage(previousAvatar).catch((error) => console.error("Ескі профиль суретін өшіру қатесі:", error.message))
+    }
+
+    return res.json({ message: "Профиль суреті сақталды", user: { ...await clientUser(user), avatar: signedAvatar } })
+  } catch (error) {
+    if (uploaded) await deleteImage(objectPath).catch(() => {})
+    console.error("Профиль суретін сақтау қатесі:", error.message)
+    return res.status(500).json({ error: "Профиль суретін сақтау мүмкін болмады" })
   }
 }
 
@@ -151,4 +203,4 @@ const changePassword = async (req, res) => {
   }
 }
 
-module.exports = { register, login, getProfile, updateProfile, changePassword }
+module.exports = { register, login, getProfile, updateProfile, uploadAvatar, changePassword }

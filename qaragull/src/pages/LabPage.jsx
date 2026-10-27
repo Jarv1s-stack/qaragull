@@ -51,10 +51,17 @@ function MiniChart({ rows }) {
 }
 
 function CameraAR() {
-  const video = useRef(null); const [active, setActive] = useState(false); const [error, setError] = useState(""); const [label, setLabel] = useState("Жапырақ жүйкесі")
-  const stop = useCallback(() => { const stream = video.current?.srcObject; stream?.getTracks().forEach((track) => track.stop()); if (video.current) video.current.srcObject = null; setActive(false) }, [])
-  useEffect(() => () => { const stream = video.current?.srcObject; stream?.getTracks().forEach((track) => track.stop()) }, [])
-  const start = async () => { try { setError(""); const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); if (video.current) video.current.srcObject = stream; setActive(true) } catch { setError("Камера ашылмады. Рұқсатты тек батырманы басқан кезде сұраймыз.") } }
+  const video = useRef(null); const [stream, setStream] = useState(null); const [active, setActive] = useState(false); const [error, setError] = useState(""); const [label, setLabel] = useState("Жапырақ жүйкесі")
+  useEffect(() => {
+    const videoElement = video.current
+    if (!videoElement || !stream) return
+    videoElement.srcObject = stream
+    videoElement.play().catch(() => setError("Камера бейнесін бастау мүмкін болмады. Қайта ашып көріңіз."))
+    return () => { videoElement.srcObject = null }
+  }, [stream, active])
+  useEffect(() => () => { stream?.getTracks().forEach((track) => track.stop()) }, [stream])
+  const stop = useCallback(() => { stream?.getTracks().forEach((track) => track.stop()); setStream(null); setActive(false) }, [stream])
+  const start = async () => { try { setError(""); const cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); setStream(cameraStream); setActive(true) } catch { setError("Камера ашылмады. Рұқсатты тек батырманы басқан кезде сұраймыз.") } }
   return <div className="lab-camera-box">
     {active ? <div className="lab-camera-view"><video ref={video} autoPlay muted playsInline /><div className="lab-ar-crosshair"><span /><b>{label}</b><small>AR оқу қабаты · өлшем емес</small></div></div> : <div className="lab-camera-placeholder"><Camera size={26} /><span>Камера өздігінен қосылмайды</span></div>}
     {error && <p className="lab-feedback">{error}</p>}
@@ -121,7 +128,7 @@ function SensorPanel({ profiles, readings, setReadings, connectSerial, disconnec
       {readings.length > 0 && <div className="lab-reading-list">{readings.slice(0, 6).map((item) => <div key={item.id}><span>{new Date(item.created_at).toLocaleString("kk-KZ")}</span><strong>{item.soil_moisture ?? "—"}%</strong><span>{item.temperature_c ?? "—"}°C</span><em>{item.source === "serial" ? "ESP32" : "DEMO"}</em></div>)}</div>}
     </Panel>
     <div className="lab-two-col">
-      <Panel title="Электр сигналдары · зерттеу прототипі" eyebrow="PLANT ECG · NOT A DIAGNOSIS" icon={Activity}>
+      <Panel title="Электр сигналдары · зерттеу үлгісі" eyebrow="ДИАГНОЗ ҚОЙМАЙДЫ" icon={Activity}>
         {(() => {
           const serialSignals = readings.filter((reading) => reading.source === "serial" && Number.isFinite(Number(reading.leaf_signal))).slice(0, 30).reverse()
           const demoSignals = readings.filter((reading) => Number.isFinite(Number(reading.leaf_signal))).slice(0, 30).reverse()
@@ -134,7 +141,7 @@ function SensorPanel({ profiles, readings, setReadings, connectSerial, disconnec
         })()}
         <p className="lab-muted">Демо толқыны — синтетикалық үлгі. Нақты Serial өлшемі электродтан алынған әлсіз потенциалды ғана көрсетеді; бұл өсімдік «сөйлейді» немесе диагноз дегенді білдірмейді.</p>
       </Panel>
-      <Panel title="Ерте стресс қаупі" eyebrow="TRANSPARENT HEURISTIC" icon={AlertTriangle}>
+      <Panel title="Өсімдік күйін тексеру" eyebrow="ҚАРАПАЙЫМ ШЕКТЕР" icon={AlertTriangle}>
         <p className="lab-copy">Жуық эвристика: температура 35°C-тан жоғары немесе топырақ ылғалы 15%-дан төмен болса, тексеру ескертуі шығады.</p>
         {Number(latest.temperatureC) > 35 || Number(latest.soilMoisture) < 15 ? <div className="lab-note warning">Көрсеткіш шектен тыс. Датчиктің калибровкасын және нақты топырақты тексеріңіз.</div> : <div className="lab-note success"><Check size={16} />Қарапайым шектерден асқан жоқ. Бұл сау екенін дәлелдемейді.</div>}
       </Panel>
@@ -259,8 +266,8 @@ function LabPage() {
   const disconnectSerial = async () => { await sendActuator({ lamp: false, fan: false, pump: false }); serialRef.current?.reader?.cancel().catch(() => {}); setSerialPort(null) }
   const selected = tabs.find(([id]) => id === active)
   return <div className="lab-page"><Navbar /><main className="lab-shell">
-    <header className="lab-hero"><div><div className="lab-kicker"><span /> QARAGULL · FIELD RESEARCH</div><h1>Өсімдік зертханасы</h1><p>Өсімдікті танудан бастап ұзақ бақылауға дейін — дерек көзін, сенімділік шегін және өлшеу түрін ашық көрсететін бір жұмыс кеңістігі.</p></div><Link to="/scan" className="lab-button primary"><Camera size={16} />Жаңа скан</Link></header>
-    <div className="lab-feature-strip"><div><strong>23</strong><span>функция идеясы</span></div><div><strong>0₸</strong><span>ақылы API жоқ</span></div><div><strong>user-first</strong><span>GPS бөлісу міндетті емес</span></div><div><strong>evidence</strong><span>демо дерек белгіленеді</span></div></div>
+    <header className="lab-hero"><div><div className="lab-kicker"><span /> ДАЛАЛЫҚ ЗЕРТТЕУ</div><h1>Өсімдік зертханасы</h1><p>Өсімдік туралы жазба, датчик өлшемі, ауа райы және тәжірибе — әр деректің қайдан келгені көрсетіледі.</p></div><Link to="/scan" className="lab-button primary"><Camera size={16} />Өсімдікті тану</Link></header>
+    <div className="lab-feature-strip"><div><strong>Нақты</strong><span>камера не датчиктен алынған</span></div><div><strong>Демо</strong><span>сынап көруге арналған үлгі</span></div><div><strong>Болжам</strong><span>AI кеңесі, диагноз емес</span></div></div>
     <div className="lab-layout"><nav className="lab-tabs" aria-label="Зертхана бөлімдері">{tabs.map(([id, label, Icon]) => <button key={id} className={active === id ? "active" : ""} aria-current={active === id ? "page" : undefined} onClick={() => setActive(id)}><Icon size={17} /><span>{label}</span><ChevronRight size={14} /></button>)}</nav><div className="lab-content"><div className="lab-content-heading"><div><span>FIELD NOTEBOOK / 0{tabs.findIndex(([id]) => id === active) + 1}</span><h2>{selected?.[1]}</h2></div><span className="lab-date">{new Date().toLocaleDateString("kk-KZ", { dateStyle: "long" })}</span></div>
       {active === "twin" && <TwinPanel profiles={profiles} setProfiles={setProfiles} scans={scans} />}
       {active === "sensors" && <SensorPanel profiles={profiles} readings={readings} setReadings={setReadings} connectSerial={connectSerial} disconnectSerial={disconnectSerial} serialConnected={Boolean(serialPort)} serialError={serialError} />}

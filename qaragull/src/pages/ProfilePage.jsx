@@ -3,10 +3,10 @@
 import { useState, useRef } from "react"
 import { useAuth } from "../context/AuthContext"
 import Navbar from "../components/Navbar"
-import { User, Mail, Lock, Camera, Eye, EyeOff, Save, Leaf } from "lucide-react"
+import { User, Mail, Lock, Camera, Eye, EyeOff, Save, Leaf, Loader2 } from "lucide-react"
 
 const ProfilePage = () => {
-  const { user, updateProfile, changePassword } = useAuth()
+  const { user, updateProfile, uploadAvatar, changePassword } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
   const [profileData, setProfileData] = useState({
     fullName: user?.fullName || "",
@@ -25,8 +25,40 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "")
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
   const fileInputRef = useRef(null)
+
+  const handleAvatarSelect = async (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setErrors((previous) => ({ ...previous, avatar: "Сурет файлын таңдаңыз" }))
+      return
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setErrors((previous) => ({ ...previous, avatar: "Сурет көлемі 4 MB-тан аспауы керек" }))
+      return
+    }
+
+    setErrors((previous) => ({ ...previous, avatar: "" }))
+    setSuccessMessage("")
+    setIsUploadingAvatar(true)
+    try {
+      const result = await uploadAvatar(file)
+      if (!result.success) {
+        setErrors((previous) => ({ ...previous, avatar: result.error }))
+        return
+      }
+      setAvatarPreview(result.user.avatar || "")
+      setSuccessMessage("Профиль суреті сақталды.")
+      setTimeout(() => setSuccessMessage(""), 3000)
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target
@@ -191,17 +223,17 @@ const ProfilePage = () => {
 
                   {/* Avatar Section */}
                   <div className="flex flex-col items-center space-y-4">
-                    <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center">
-                      <span className="text-2xl font-bold text-primary-600">
-                        {user?.fullName?.charAt(0)?.toUpperCase()}
-                      </span>
+                    <div className="profile-avatar-preview">
+                      {avatarPreview ? <img src={avatarPreview} alt={`${user?.fullName || "Профиль"} суреті`} /> : <span>{user?.fullName?.charAt(0)?.toUpperCase()}</span>}
                     </div>
                     <div className="text-center">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-secondary">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Сурет өзгерту
+                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingAvatar} className="btn btn-secondary">
+                        {isUploadingAvatar ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
+                        {isUploadingAvatar ? "Сақталуда…" : "Профиль суретін таңдау"}
                       </button>
-                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
+                      <p className="text-xs text-gray-500 mt-2">JPG, PNG немесе WebP · 4 MB дейін</p>
+                      {errors.avatar && <p className="text-sm text-red-600 mt-2">{errors.avatar}</p>}
+                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarSelect} className="hidden" />
                     </div>
                   </div>
 

@@ -107,8 +107,8 @@ const DashboardPage = () => {
                 <p className="text-sm text-gray-500">Соңғы кіру</p>
                 <p className="text-sm font-medium text-gray-700">{new Date().toLocaleDateString("kk-KZ")}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-xl font-bold text-green-600">{user?.fullName?.charAt(0)?.toUpperCase()}</span>
+              <div className="dashboard-avatar">
+                {user?.avatar ? <img src={user.avatar} alt="" /> : <span>{user?.fullName?.charAt(0)?.toUpperCase()}</span>}
               </div>
             </div>
           </div>
