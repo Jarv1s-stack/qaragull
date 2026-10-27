@@ -8,7 +8,7 @@ const PlantModel = lazy(() => import("./PlantModel"))
 import {
   Activity, AlertTriangle, BookOpen, Camera, Check, ChevronRight, CloudSun, Download,
   FlaskConical, Leaf, Loader2, MapPin, Mic, MicOff, Radio, RefreshCw, Save,
-  Sprout, Thermometer, Upload, Volume2, Wifi, WifiOff, Wind, Droplets, Sun, Zap,
+  Sprout, Thermometer, Volume2, Wifi, WifiOff, Wind, Droplets, Sun, Zap,
 } from "lucide-react"
 
 const tabs = [
@@ -67,7 +67,11 @@ function TwinPanel({ profiles, setProfiles, scans }) {
   useEffect(() => { if (profiles.length && !selected) setSelected(String(profiles[0].id)) }, [profiles, selected])
   useEffect(() => { if (selected) labAPI.getCareEvents(selected).then(({ data }) => setEvents(data.events || [])).catch(() => setEvents([])) }, [selected])
   const selectedProfile = profiles.find((profile) => String(profile.id) === String(selected))
-  const relatedScans = scans.filter((scan) => selectedProfile && scan.scientificName?.toLowerCase() === selectedProfile.scientific_name?.toLowerCase())
+  const relatedScans = scans
+    .filter((scan) => selectedProfile && scan.scientificName?.toLowerCase() === selectedProfile.scientific_name?.toLowerCase())
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const recentIssueCount = relatedScans.filter((scan) => scan.diagnosis?.status === "possible_issue" && Date.now() - new Date(scan.createdAt).getTime() <= 30 * 24 * 60 * 60 * 1000).length
+  const watchSignal = recentIssueCount > 1 ? "қайталанған AI белгісі" : recentIssueCount === 1 ? "бір күмәнді AI белгісі" : relatedScans.length ? "қайталанған белгі тіркелмеді" : "дерек жеткіліксіз"
   const create = async (event) => { event.preventDefault(); setMessage(""); try { const scan = scans.find((item) => String(item.id) === String(form.scanId)); const { data } = await labAPI.createProfile({ name: form.name, scanId: scan?.id, commonName: scan?.commonName || form.name, scientificName: scan?.scientificName || "" }); setProfiles([data.profile, ...profiles]); setSelected(String(data.profile.id)); setForm({ name: "", scanId: "" }); setMessage("Жеке өсімдік профилі сақталды.") } catch (error) { setMessage(error.response?.data?.error || "Профильді сақтау мүмкін болмады. Схеманы жаңартып көріңіз.") } }
   const logCare = async (event) => { event.preventDefault(); if (!selected) return; try { const { data } = await labAPI.createCareEvent({ profileId: selected, eventType, notes }); setEvents([data.event, ...events]); setNotes(""); setMessage("Күтім тарихы жаңартылды.") } catch (error) { setMessage(error.response?.data?.error || "Күтім жазбасын сақтау мүмкін болмады") } }
   const saveReview = async () => { try { await labAPI.requestExpertReview({ question: `Қолжетімділігі төмен AI нәтижесін тексеру: ${selectedProfile?.common_name || "өсімдік"}` }); setMessage("Тексеруге өтініш жергілікті кезекке қосылды. Бұл кезек нақты маманға автоматты түрде жіберілмейді.") } catch (error) { setMessage(error.response?.data?.error || "Өтініш сақталмады") } }
@@ -75,7 +79,7 @@ function TwinPanel({ profiles, setProfiles, scans }) {
     <Panel title="Әр өсімдікке жеке өмірбаян" eyebrow="DIGITAL TWIN · PERSONAL" icon={Leaf}>
       <p className="lab-copy">Сканды түрі бойынша сәйкестендіру тек ұсыныс береді. Соңғы таңдауды өзіңіз жасайсыз; бірдей атау өсімдік бірдей екенін дәлелдемейді.</p>
       {profiles.length > 0 && <div className="lab-profile-row"><select aria-label="Өсімдік профилін таңдау" value={selected} onChange={(event) => setSelected(event.target.value)}>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.common_name}</option>)}</select><span className="lab-tag">{relatedScans.length} ұқсас скан</span></div>}
-      {selectedProfile && <div className="lab-identity-card"><div className="lab-identity-mark"><Sprout size={28} /></div><div><strong>{selectedProfile.name}</strong><span>{selectedProfile.common_name}</span><em>{selectedProfile.scientific_name || "Ғылыми атауы белгісіз"}</em></div><div className="lab-risk"><small>Қадағалау</small><strong>{relatedScans.length > 2 ? "бақылауды жалғастыр" : "дерек жина"}</strong><span>Жай салыстыру ережесі</span></div></div>}
+      {selectedProfile && <><div className="lab-identity-card"><div className="lab-identity-mark"><Sprout size={28} /></div><div><strong>{selectedProfile.name}</strong><span>{selectedProfile.common_name}</span><em>{selectedProfile.scientific_name || "Ғылыми атауы белгісіз"}</em></div><div className="lab-risk"><small>Соңғы 30 күн</small><strong>{watchSignal}</strong><span>Қарапайым бақылау эвристикасы</span></div></div><p className="lab-muted">Бұл — соңғы скандардағы AI белгісінің жиілігі ғана; аурудың не нашарлаудың ғылыми болжамы емес.</p></>}
       <form className="lab-form-grid" onSubmit={create}>
         <label>Жеке атауы<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Мысалы: терезе алдындағы фикус" required maxLength={120} /></label>
         <label>Сканнан сәйкестендіру<select value={form.scanId} onChange={(event) => setForm({ ...form, scanId: event.target.value })}><option value="">Сканды кейін қосамын</option>{scans.map((scan) => <option key={scan.id} value={scan.id}>{scan.commonName} · {new Date(scan.createdAt).toLocaleDateString("kk-KZ")}</option>)}</select></label>
@@ -89,7 +93,7 @@ function TwinPanel({ profiles, setProfiles, scans }) {
       </Panel>
       <Panel title="Сурет бойынша уақыт сызығы" eyebrow="MANUAL ID MATCH" icon={RefreshCw}>
         <p className="lab-muted">Түр атауы сәйкес скандар төменде көрсетілді. Бір өсімдік екенін өзіңіз растаңыз.</p>
-        <div className="lab-scan-strip">{relatedScans.length ? relatedScans.slice(0, 6).map((scan) => <figure key={scan.id}><img src={scan.imageUrl} alt={`${scan.commonName}, ${new Date(scan.createdAt).toLocaleDateString("kk-KZ")}`} /><figcaption>{new Date(scan.createdAt).toLocaleDateString("kk-KZ")}</figcaption></figure>) : <div className="lab-empty">Бұл түрге сәйкес скан табылмады.</div>}</div>
+        <div className="lab-scan-strip">{relatedScans.length ? relatedScans.slice(0, 6).map((scan) => <figure key={scan.id}><div className="lab-scan-preview"><img src={scan.imageUrl} alt={`${scan.commonName}, ${new Date(scan.createdAt).toLocaleDateString("kk-KZ")}`} />{(scan.regions || []).map((region, index) => <span key={`${scan.id}-${index}`} className="lab-scan-region" title={region.label} style={{ left: `${region.x / 10}%`, top: `${region.y / 10}%`, width: `${region.width / 10}%`, height: `${region.height / 10}%` }} />)}</div><figcaption>{new Date(scan.createdAt).toLocaleDateString("kk-KZ")}<span>{scan.diagnosis?.issue || (scan.isUnknown ? "Түр белгісіз" : "Белгі тіркелмеген")}</span></figcaption></figure>) : <div className="lab-empty">Бұл түрге сәйкес скан табылмады.</div>}</div>
         <button className="lab-button secondary" onClick={saveReview}>Белгісіз нәтиже болса маман кезегіне жіберу</button>
       </Panel>
     </div>}
@@ -118,8 +122,17 @@ function SensorPanel({ profiles, readings, setReadings, connectSerial, disconnec
     </Panel>
     <div className="lab-two-col">
       <Panel title="Электр сигналдары · зерттеу прототипі" eyebrow="PLANT ECG · NOT A DIAGNOSIS" icon={Activity}>
-        <div className="lab-sparkline"><svg viewBox="0 0 400 72" preserveAspectRatio="none" aria-label="Соңғы өсімдік электр сигналының графигі"><path d="M0 36 L20 36 L30 34 L37 40 L45 22 L52 54 L59 36 L83 36 L92 32 L101 38 L110 36 L134 35 L142 41 L151 18 L158 57 L165 36 L195 36 L203 33 L211 39 L219 35 L245 36 L254 42 L261 21 L268 52 L276 36 L305 36 L314 34 L324 39 L332 35 L355 36 L363 40 L371 25 L380 50 L390 36 L400 36" /></svg></div>
-        <p className="lab-muted">Бұл график demo үлгісі. Әлсіз электр потенциалы өсімдік «сөйлейді» дегенді білдірмейді. Электрод пен өлшеу модулінсіз нақты сигнал өлшенбейді.</p>
+        {(() => {
+          const serialSignals = readings.filter((reading) => reading.source === "serial" && Number.isFinite(Number(reading.leaf_signal))).slice(0, 30).reverse()
+          const demoSignals = readings.filter((reading) => Number.isFinite(Number(reading.leaf_signal))).slice(0, 30).reverse()
+          const chartRows = serialSignals.length ? serialSignals : demoSignals
+          const values = chartRows.map((reading) => Number(reading.leaf_signal))
+          const min = values.length ? Math.min(...values) : -1
+          const max = values.length ? Math.max(...values) : 1
+          const points = values.map((value, index) => `${values.length < 2 ? 200 : index * 400 / (values.length - 1)},${max === min ? 36 : 64 - (value - min) / (max - min) * 56}`)
+          return <><div className="lab-sparkline"><svg viewBox="0 0 400 72" preserveAspectRatio="none" aria-label="Өсімдіктің әлсіз электр сигналының графигі"><path d={points.length > 1 ? `M${points.join(" L")}` : "M0 36 L20 36 L30 34 L37 40 L45 22 L52 54 L59 36 L83 36 L92 32 L101 38 L110 36 L134 35 L142 41 L151 18 L158 57 L165 36 L195 36 L203 33 L211 39 L219 35 L245 36 L254 42 L261 21 L268 52 L276 36 L305 36 L314 34 L324 39 L332 35 L355 36 L363 40 L371 25 L380 50 L390 36 L400 36"} /></svg></div><span className="lab-tag">{serialSignals.length ? `${serialSignals.length} нақты Serial өлшемі` : chartRows.length ? "Демо өлшемдері · синтетикалық" : "Синтетикалық үлгі"}</span></>
+        })()}
+        <p className="lab-muted">Демо толқыны — синтетикалық үлгі. Нақты Serial өлшемі электродтан алынған әлсіз потенциалды ғана көрсетеді; бұл өсімдік «сөйлейді» немесе диагноз дегенді білдірмейді.</p>
       </Panel>
       <Panel title="Ерте стресс қаупі" eyebrow="TRANSPARENT HEURISTIC" icon={AlertTriangle}>
         <p className="lab-copy">Жуық эвристика: температура 35°C-тан жоғары немесе топырақ ылғалы 15%-дан төмен болса, тексеру ескертуі шығады.</p>
@@ -167,9 +180,7 @@ function ExperimentsPanel({ experiments, setExperiments }) {
 }
 
 function StudioPanel({ readings, serialConnected, sendActuator }) {
-  const [growth, setGrowth] = useState(10); const [leaves, setLeaves] = useState(8); const [thermalImage, setThermalImage] = useState(""); const [actuators, setActuators] = useState({ lamp: false, fan: false, pump: false }); const [ greenhouseMessage, setGreenhouseMessage ] = useState("")
-  const imageInput = useRef(null)
-  useEffect(() => () => { if (thermalImage) URL.revokeObjectURL(thermalImage) }, [thermalImage])
+  const [growth, setGrowth] = useState(10); const [leaves, setLeaves] = useState(8); const [actuators, setActuators] = useState({ lamp: false, fan: false, pump: false }); const [ greenhouseMessage, setGreenhouseMessage ] = useState("")
   useEffect(() => {
     if (!serialConnected) return undefined
     const heartbeat = window.setInterval(() => sendActuator(actuators), 10000)
@@ -178,7 +189,7 @@ function StudioPanel({ readings, serialConnected, sendActuator }) {
   const apply = (next) => { setActuators(next); if (next.pump) setTimeout(() => { const safe = { ...next, pump: false }; setActuators(safe); if (serialConnected) sendActuator(safe) }, 4000); if (serialConnected) sendActuator(next); setGreenhouseMessage(serialConnected ? "Команда қосылған құрылғыға жіберілді." : "Қауіпсіз demo режимі: нақты сорғы/шам қосылған жоқ.") }
   return <div className="lab-stack">
     <div className="lab-two-col"><Panel title="Камерадағы оқу қабаты" eyebrow="AR HELPER · CAMERA OPTIONAL" icon={Camera}><p className="lab-copy">Браузердің камерасына графикалық белгі қабаттайды. Бұл AR детектор емес, жапырақты қолмен көрсетуге арналған оқу режимі.</p><CameraAR /></Panel><Panel title="Өсу уақытының 3D моделі" eyebrow="PROCEDURAL · NOT PHOTOGRAMMETRY" icon={Sprout}><p className="lab-copy">Суреттен фотограмметрия жасалмайды: модель биіктік пен жапырақ санына қарай сызылатын шартты 3D өсімдік.</p><Suspense fallback={<div className="lab-3d-canvas lab-empty">3D модель жүктелуде…</div>}><PlantModel growth={growth} leaves={leaves} /></Suspense><label className="lab-range">Өсу кезеңі<input type="range" min="1" max="30" value={growth} onChange={(event) => setGrowth(Number(event.target.value))} /><span>{growth} шартты күн</span></label><label className="lab-range">Жапырақ саны<input type="range" min="2" max="18" value={leaves} onChange={(event) => setLeaves(Number(event.target.value))} /><span>{leaves}</span></label></Panel></div>
-    <div className="lab-two-col"><Panel title="Мини-жылыжай · қауіпсіз симулятор" eyebrow="NO ACTUATOR WITHOUT SERIAL" icon={Zap}><p className="lab-copy">Ақау не шектен тыс жағдай табылса, симуляция сорғыны 4 секундта тоқтатады. Нақты құрылғы тек Web Serial арқылы, батырма басқанда ғана басқарылуы мүмкін.</p><div className="lab-controller-state"><span><Thermometer size={16} />Датчик температурасы</span><strong>{readings[0]?.temperature_c ?? "—"}°C</strong><span className="lab-tag">{serialConnected ? "Serial қосулы" : "Тек демо"}</span></div><div className="lab-actuators">{[["lamp", "Өсу шамы", Sun], ["fan", "Желдеткіш", Wind], ["pump", "Су сорғысы", Droplets]].map(([key, title, Icon]) => <button key={key} className={`lab-actuator ${actuators[key] ? "on" : ""}`} onClick={() => apply({ ...actuators, [key]: !actuators[key] })}><Icon size={19} /><span>{title}</span><i>{actuators[key] ? "қосулы" : "сөндірулі"}</i></button>)}</div>{greenhouseMessage && <p className="lab-feedback" role="status">{greenhouseMessage}</p>}</Panel><Panel title="Термокамера суреті" eyebrow="THERMAL CAMERA · OPTIONAL" icon={Thermometer}><div className="lab-note warning"><Thermometer size={16} />Калибрленген жылулық датчик жалғанбаса, температура картасын есептеу мүмкін емес. Кәдімгі фото жылулық өлшем емес.</div><input ref={imageInput} className="lab-hidden" type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) setThermalImage(URL.createObjectURL(file)) }} />{thermalImage ? <div className="lab-thermal-preview"><img src={thermalImage} alt="Қолмен жүктелген термокамера кескіні" /><span>Кескін жүктелді · сандық температура есептелмейді</span></div> : <button className="lab-button secondary" onClick={() => imageInput.current?.click()}><Upload size={15} />Термосуретті қолмен таңдау</button>}<p className="lab-muted">Тек кескінді қарау/жүктеу; камераны немесе датчикті біз автоматты оқымаймыз.</p></Panel></div>
+    <div className="lab-two-col"><Panel title="Мини-жылыжай · қауіпсіз симулятор" eyebrow="NO ACTUATOR WITHOUT SERIAL" icon={Zap}><p className="lab-copy">Ақау не шектен тыс жағдай табылса, симуляция сорғыны 4 секундта тоқтатады. Нақты құрылғы тек Web Serial арқылы, батырма басқанда ғана басқарылуы мүмкін.</p><div className="lab-controller-state"><span><Thermometer size={16} />Датчик температурасы</span><strong>{readings[0]?.temperature_c ?? "—"}°C</strong><span className="lab-tag">{serialConnected ? "Serial қосулы" : "Тек демо"}</span></div><div className="lab-actuators">{[["lamp", "Өсу шамы", Sun], ["fan", "Желдеткіш", Wind], ["pump", "Су сорғысы", Droplets]].map(([key, title, Icon]) => <button key={key} className={`lab-actuator ${actuators[key] ? "on" : ""}`} onClick={() => apply({ ...actuators, [key]: !actuators[key] })}><Icon size={19} /><span>{title}</span><i>{actuators[key] ? "қосулы" : "сөндірулі"}</i></button>)}</div>{greenhouseMessage && <p className="lab-feedback" role="status">{greenhouseMessage}</p>}</Panel><p className="lab-note warning"><AlertTriangle size={16} />Термокамера арқылы ерте стресс анықтау енгізілмеді: арнайы жылу датчигі қажет, кәдімгі телефон камерасы жылуды өлшемейді.</p></div>
   </div>
 }
 
