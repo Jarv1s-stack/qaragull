@@ -44,6 +44,9 @@ const sendEmailProviderError = (res, error) => {
 const emailRedirectUrl = () => {
   const configured = process.env.AUTH_REDIRECT_URL
   if (configured) return configured
+  if (process.env.NODE_ENV === "production") {
+    return "https://qaragull-frontend.vercel.app/login?confirmed=1"
+  }
   const firstClientOrigin = (process.env.CLIENT_URL || "http://localhost:5173").split(",")[0].trim()
   return `${firstClientOrigin.replace(/\/$/, "")}/login?confirmed=1`
 }
