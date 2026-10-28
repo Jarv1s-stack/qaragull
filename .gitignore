@@ -19,3 +19,8 @@ Thumbs.db
 .DS_Store
 
 .vercel
+
+# Local presentation builds and exported artifacts
+/.codex-presentation-build/
+/.codex-finalizer/
+/output/

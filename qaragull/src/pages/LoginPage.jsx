@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { Leaf, Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react"
 
@@ -16,6 +16,23 @@ const LoginPage = () => {
 
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [notice, setNotice] = useState("")
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+    const confirmationError = hash.get("error_description") || hash.get("error_code")
+    if (confirmationError) {
+      setError("Растау сілтемесінің мерзімі өткен немесе ол қолданылып қойған. Тіркелуді қайта бастап, жаңа сілтемені ашыңыз.")
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
+      return
+    }
+    if (query.get("confirmed") === "1" || hash.has("access_token")) {
+      setNotice("Email расталды. Енді email мен құпия сөзіңіз арқылы кіріңіз.")
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
+    }
+  }, [location.search])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -71,6 +88,11 @@ const LoginPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {notice && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3" role="status">
+                  <p className="text-green-800 text-sm">{notice}</p>
+                </div>
+              )}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-red-600 text-sm">{error}</p>

@@ -28,17 +28,24 @@ const createEmailAuthClient = () => createClient(
 const emailProviderError = (error) => {
   const message = String(error?.message || "").toLowerCase()
   if (error?.status === 429 || /rate limit|too many requests|over_email_send_rate_limit/.test(message)) {
-    return { status: 429, message: "Email-код жіберу шегіне жетті. Біраздан соң қайта көріңіз." }
+    return { status: 429, message: "Email жіберу шегіне жетті. Біраздан соң қайта көріңіз." }
   }
   if (/email_address_not_authorized|email address not authorized/.test(message)) {
     return { status: 503, message: "Supabase-тың әдепкі пошта қызметі тек команда мүшелеріне жібереді. Басқа email-дарға жіберу үшін SMTP баптау қажет." }
   }
-  return { status: 502, message: "Email-код жіберілмеді. Supabase Auth пошта баптауын тексеріңіз." }
+  return { status: 502, message: "Email жіберілмеді. Supabase Auth пошта баптауын тексеріңіз." }
 }
 
 const sendEmailProviderError = (res, error) => {
   const mapped = emailProviderError(error)
   return res.status(mapped.status).json({ error: mapped.message })
+}
+
+const emailRedirectUrl = () => {
+  const configured = process.env.AUTH_REDIRECT_URL
+  if (configured) return configured
+  const firstClientOrigin = (process.env.CLIENT_URL || "http://localhost:5173").split(",")[0].trim()
+  return `${firstClientOrigin.replace(/\/$/, "")}/login?confirmed=1`
 }
 
 const issueAppToken = async (res, user, status = 200) => {
@@ -68,11 +75,24 @@ const register = async (req, res) => {
     const { data, error } = await emailAuth.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: emailRedirectUrl(),
+      },
     })
     if (error) return sendEmailProviderError(res, error)
     if (data.user?.identities?.length === 0) {
-      return res.status(409).json({ error: "Бұл email Supabase Auth-та бұрын қолданылған. Кіруді немесе жаңа email енгізуді көріңіз." })
+      const { error: resendError } = await emailAuth.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: emailRedirectUrl() },
+      })
+      if (resendError) return sendEmailProviderError(res, resendError)
+      return res.status(202).json({
+        message: "Email-ды растау сілтемесі жіберілді",
+        requiresEmailVerification: true,
+        email,
+      })
     }
     if (data.session && data.user?.id) {
       // Email confirmation must stay enabled. Remove the unverified bypass account so a retry is safe.
@@ -81,7 +101,7 @@ const register = async (req, res) => {
       return res.status(503).json({ error: "Email растауы өшірулі тұр. Supabase Auth баптауынан email confirmation-ды қосыңыз." })
     }
     return res.status(202).json({
-      message: "Растау коды email-ға жіберілді",
+      message: "Email-ды растау сілтемесі жіберілді",
       requiresEmailVerification: true,
       email,
     })
@@ -91,88 +111,23 @@ const register = async (req, res) => {
   }
 }
 
-const verifyRegistration = async (req, res) => {
-  try {
-    const errors = validationResult(req)
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
-
-    const { fullName, email, password, token: otp } = req.body
-    const emailAuth = createEmailAuthClient()
-    let authUser = null
-
-    // This makes a retry safe if the email was confirmed but writing the app profile previously failed.
-    const { data: existingAuth, error: signInError } = await emailAuth.auth.signInWithPassword({ email, password })
-    if (!signInError) authUser = existingAuth.user
-
-    if (!authUser) {
-      const { data, error } = await emailAuth.auth.verifyOtp({ email, token: otp, type: "email" })
-      if (error) return res.status(400).json({ error: "Код жарамсыз немесе уақыты өткен. Жаңа код сұраңыз." })
-
-      const { data: signedIn, error: passwordError } = await emailAuth.auth.signInWithPassword({ email, password })
-      if (passwordError) {
-        console.error("Verified signup password check failed:", passwordError.message)
-        return res.status(400).json({ error: "Email расталды, бірақ құпия сөз бастапқы тіркеудегімен сәйкес емес." })
-      }
-      authUser = signedIn.user || data.user
-    }
-
-    if (!authUser?.email_confirmed_at) {
-      return res.status(400).json({ error: "Email расталмады. Кодты тексеріп, қайта көріңіз." })
-    }
-
-    const { data: existingUser, error: lookupError } = await supabase
-      .from("users")
-      .select("id, full_name, email, avatar, password")
-      .eq("email", email)
-      .maybeSingle()
-    if (lookupError) throw lookupError
-    if (existingUser) {
-      if (!(await bcrypt.compare(password, existingUser.password))) {
-        return res.status(409).json({ error: "Бұл email осы қолданбада бұрын тіркелген." })
-      }
-      return issueAppToken(res, existingUser)
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 12)
-    const { data: user, error } = await supabase
-      .from("users")
-      .insert({ full_name: fullName, email, password: hashedPassword })
-      .select("id, full_name, email, avatar, password")
-      .single()
-    if (error) {
-      if (error.code === "23505") {
-        const { data: racedUser, error: raceError } = await supabase
-          .from("users")
-          .select("id, full_name, email, avatar, password")
-          .eq("email", email)
-          .maybeSingle()
-        if (raceError) throw raceError
-        if (racedUser && await bcrypt.compare(password, racedUser.password)) return issueAppToken(res, racedUser)
-        return res.status(409).json({ error: "Бұл email мекенжайы бұрын тіркелген" })
-      }
-      throw error
-    }
-
-    return issueAppToken(res, user, 201)
-  } catch (error) {
-    console.error("Email растау қатесі:", error.message)
-    return res.status(500).json({ error: "Тіркеуді аяқтау кезінде сервер қатесі орын алды" })
-  }
-}
-
-const resendRegistrationCode = async (req, res) => {
+const resendRegistrationLink = async (req, res) => {
   try {
     const errors = validationResult(req)
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
 
     const { email } = req.body
     const emailAuth = createEmailAuthClient()
-    const { error } = await emailAuth.auth.resend({ type: "signup", email })
+    const { error } = await emailAuth.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: emailRedirectUrl() },
+    })
     if (error) return sendEmailProviderError(res, error)
-    return res.json({ message: "Жаңа растау коды жіберілді" })
+    return res.json({ message: "Email-ды растау сілтемесі қайта жіберілді" })
   } catch (error) {
-    console.error("Email кодын қайта жіберу қатесі:", error.message)
-    return res.status(500).json({ error: "Кодты қайта жіберу кезінде сервер қатесі орын алды" })
+    console.error("Растау сілтемесін қайта жіберу қатесі:", error.message)
+    return res.status(500).json({ error: "Сілтемені қайта жіберу кезінде сервер қатесі орын алды" })
   }
 }
 
@@ -182,14 +137,58 @@ const login = async (req, res) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() })
 
     const { email, password } = req.body
-    const { data: user, error } = await supabase
+    const { data: existingUser, error: lookupError } = await supabase
       .from("users")
       .select("id, full_name, email, avatar, password")
       .eq("email", email)
       .maybeSingle()
-    if (error) throw error
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(400).json({ error: "Қате email немесе құпия сөз" })
+    if (lookupError) throw lookupError
+
+    // Existing accounts use the application's password hash. A newly confirmed
+    // Supabase user gets its app profile on first successful login.
+    let user = existingUser
+    if (user) {
+      if (!(await bcrypt.compare(password, user.password))) {
+        return res.status(400).json({ error: "Қате email немесе құпия сөз" })
+      }
+    } else {
+      const emailAuth = createEmailAuthClient()
+      const { data: signedIn, error: signInError } = await emailAuth.auth.signInWithPassword({ email, password })
+      if (signInError) {
+        if (/email not confirmed/i.test(signInError.message || "")) {
+          return res.status(403).json({ error: "Алдымен email-ға келген растау сілтемесін ашыңыз." })
+        }
+        return res.status(400).json({ error: "Қате email немесе құпия сөз" })
+      }
+      if (!signedIn.user?.email_confirmed_at) {
+        return res.status(403).json({ error: "Алдымен email-ға келген растау сілтемесін ашыңыз." })
+      }
+
+      const fullName = String(signedIn.user.user_metadata?.full_name || email.split("@")[0]).slice(0, 255)
+      const hashedPassword = await bcrypt.hash(password, 12)
+      const { data: createdUser, error: createError } = await supabase
+        .from("users")
+        .insert({ full_name: fullName, email, password: hashedPassword })
+        .select("id, full_name, email, avatar, password")
+        .single()
+      if (createError) {
+        if (createError.code === "23505") {
+          const { data: racedUser, error: raceError } = await supabase
+            .from("users")
+            .select("id, full_name, email, avatar, password")
+            .eq("email", email)
+            .maybeSingle()
+          if (raceError) throw raceError
+          if (!racedUser || !(await bcrypt.compare(password, racedUser.password))) {
+            return res.status(409).json({ error: "Бұл email мекенжайы бұрын тіркелген." })
+          }
+          user = racedUser
+        } else {
+          throw createError
+        }
+      } else {
+        user = createdUser
+      }
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: "7d" })
@@ -324,4 +323,4 @@ const changePassword = async (req, res) => {
   }
 }
 
-module.exports = { register, verifyRegistration, resendRegistrationCode, login, getProfile, updateProfile, uploadAvatar, changePassword }
+module.exports = { register, resendRegistrationLink, login, getProfile, updateProfile, uploadAvatar, changePassword }

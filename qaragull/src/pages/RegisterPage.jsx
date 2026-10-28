@@ -6,14 +6,13 @@ import { ArrowLeft, Eye, EyeOff, Leaf, Lock, Mail, User } from "lucide-react"
 const RegisterPage = () => {
   const [formData, setFormData] = useState({ fullName: "", email: "", password: "", confirmPassword: "" })
   const [stage, setStage] = useState("details")
-  const [verificationCode, setVerificationCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [notice, setNotice] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const { register, verifyRegistration, resendRegistrationCode } = useAuth()
+  const { register, resendRegistrationLink } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (event) => {
@@ -43,32 +42,11 @@ const RegisterPage = () => {
     if (!result.success) {
       setErrors({ general: result.error })
     } else if (result.requiresEmailVerification) {
-      setStage("verify")
-      setNotice("Растау кодын email поштаңыздан қараңыз. Хат көрінбесе, Spam бумасын тексеріңіз.")
+      setStage("sent")
+      setNotice("Email-ға растау сілтемесі жіберілді. Хаттағы сілтемені ашып, аккаунтты растаңыз. Хат көрінбесе, Spam бумасын тексеріңіз.")
     } else {
       navigate("/dashboard")
     }
-    setIsLoading(false)
-  }
-
-  const handleVerify = async (event) => {
-    event.preventDefault()
-    if (!/^\d{6,8}$/.test(verificationCode)) {
-      setErrors({ code: "Email-дағы 6–8 таңбалы кодты енгізіңіз" })
-      return
-    }
-
-    setIsLoading(true)
-    setErrors({})
-    setNotice("")
-    const result = await verifyRegistration(
-      formData.fullName.trim(),
-      formData.email.trim(),
-      formData.password,
-      verificationCode,
-    )
-    if (result.success) navigate("/dashboard")
-    else setErrors({ general: result.error })
     setIsLoading(false)
   }
 
@@ -76,8 +54,8 @@ const RegisterPage = () => {
     setIsLoading(true)
     setErrors({})
     setNotice("")
-    const result = await resendRegistrationCode(formData.email.trim())
-    if (result.success) setNotice("Жаңа код жіберілді. Email мен Spam бумасын тексеріңіз.")
+    const result = await resendRegistrationLink(formData.email.trim())
+    if (result.success) setNotice("Жаңа растау сілтемесі жіберілді. Email мен Spam бумасын тексеріңіз.")
     else setErrors({ general: result.error })
     setIsLoading(false)
   }
@@ -94,8 +72,8 @@ const RegisterPage = () => {
           <header className="auth-brand-head">
             <Link to="/" className="auth-back-link"><ArrowLeft size={15} aria-hidden="true" /> Басты бетке</Link>
             <p className="eyebrow">ЖЕКЕ ДАЛАЛЫҚ ДӘПТЕРІҢ</p>
-            <h1 id="register-title">{stage === "verify" ? "Email-ды растаңыз" : "Тіркелу"}</h1>
-            <p>{stage === "verify" ? "Аккаунт жасау үшін email-ға келген кодты енгізіңіз." : "Өсімдіктерді танып, бақылау тарихын сақтаңыз."}</p>
+            <h1 id="register-title">{stage === "sent" ? "Email-ды растаңыз" : "Тіркелу"}</h1>
+            <p>{stage === "sent" ? "Аккаунтты іске қосу үшін поштаңыздағы сілтемені ашыңыз." : "Өсімдіктерді танып, бақылау тарихын сақтаңыз."}</p>
           </header>
 
           <div className="auth-form-content">
@@ -142,22 +120,17 @@ const RegisterPage = () => {
                   {errors.confirmPassword && <p className="auth-field-error">{errors.confirmPassword}</p>}
                 </div>
 
-                <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">{isLoading ? "Email тексерілуде…" : "Кодты email-ға жіберу"}</button>
+                <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">{isLoading ? "Тіркеліп жатыр…" : "Тіркелу"}</button>
               </form>
             ) : (
-              <form onSubmit={handleVerify} className="auth-form" noValidate>
+              <div className="auth-form">
                 <div className="auth-email-target"><Mail size={17} aria-hidden="true" /><span>{formData.email}</span></div>
-                <div className="auth-field">
-                  <label htmlFor="verificationCode">Растау коды</label>
-                  <input id="verificationCode" name="verificationCode" className="input auth-code-input" type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus required minLength={6} maxLength={8} placeholder="000000" value={verificationCode} onChange={(event) => { setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 8)); setErrors({}) }} aria-invalid={Boolean(errors.code)} aria-describedby={errors.code ? "verification-error" : undefined} />
-                  {errors.code && <p id="verification-error" className="auth-field-error">{errors.code}</p>}
-                </div>
-                <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">{isLoading ? "Тексерілуде…" : "Email-ды растау"}</button>
                 <div className="auth-code-actions">
-                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={handleResend}>Кодты қайта жіберу</button>
-                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={() => { setStage("details"); setErrors({}); setNotice("") }}>Email-ды өзгерту</button>
+                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={handleResend}>{isLoading ? "Жіберілуде…" : "Сілтемені қайта жіберу"}</button>
+                  <button type="button" className="auth-text-button" disabled={isLoading} onClick={() => { setStage("details"); setErrors({}); setNotice("") }}>Басқа email енгізу</button>
                 </div>
-              </form>
+                <Link to="/login" className="btn btn-primary auth-submit">Email-ды растаған соң кіру</Link>
+              </div>
             )}
 
             <p className="auth-login-link">Аккаунтыңыз бар ма? <Link to="/login">Кіру</Link></p>
