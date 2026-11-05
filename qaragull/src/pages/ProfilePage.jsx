@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import Navbar from "../components/Navbar"
-import { User, Mail, Lock, Camera, Eye, EyeOff, Save, Leaf, Loader2 } from "lucide-react"
+import { User, Mail, Lock, Camera, Eye, EyeOff, Save, Leaf, Loader2, Calendar, ArrowRight } from "lucide-react"
+import { plantsAPI } from "../services/api"
 
 const ProfilePage = () => {
   const { user, updateProfile, uploadAvatar, changePassword } = useAuth()
@@ -27,8 +29,41 @@ const ProfilePage = () => {
   const [successMessage, setSuccessMessage] = useState("")
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "")
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [activity, setActivity] = useState({ stats: null, scans: [], loading: true, error: "" })
 
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    let active = true
+    const loadActivity = async () => {
+      try {
+        const [statsResponse, scansResponse] = await Promise.all([
+          plantsAPI.getUserStats(),
+          plantsAPI.getUserScans(1, 3),
+        ])
+        if (active) {
+          setActivity({
+            stats: statsResponse.data.stats,
+            scans: scansResponse.data.scans || [],
+            loading: false,
+            error: "",
+          })
+        }
+      } catch (error) {
+        if (active) {
+          setActivity({
+            stats: null,
+            scans: [],
+            loading: false,
+            error: error.response?.data?.error || "Зерттеу белсенділігін жүктеу мүмкін болмады.",
+          })
+        }
+      }
+    }
+
+    loadActivity()
+    return () => { active = false }
+  }, [])
 
   const handleAvatarSelect = async (event) => {
     const file = event.target.files?.[0]
@@ -174,6 +209,59 @@ const ProfilePage = () => {
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section className="profile-overview" aria-labelledby="profile-overview-title">
+          <div className="profile-overview-heading">
+            <div>
+              <p className="eyebrow">ЖЕКЕ ЗЕРТТЕУ</p>
+              <h1 id="profile-overview-title">Профиль және белсенділік</h1>
+            </div>
+            <span className="profile-overview-user">{user?.fullName || "Зерттеуші"}</span>
+          </div>
+
+          {activity.error && <p className="profile-activity-error" role="alert">{activity.error}</p>}
+
+          <dl className="profile-stats">
+            {[
+              { label: "Барлық скан", value: activity.loading ? "…" : activity.stats?.totalScans ?? "—", icon: Camera },
+              { label: "Осы апта", value: activity.loading ? "…" : activity.stats?.thisWeek ?? "—", icon: Calendar },
+              { label: "Табылған түр", value: activity.loading ? "…" : activity.stats?.uniqueSpecies ?? "—", icon: Leaf },
+              { label: "AI сенімділігі", value: activity.loading ? "…" : activity.stats?.avgAccuracy == null ? "—" : `${activity.stats.avgAccuracy}%`, icon: Eye },
+            ].map(({ label, value, icon: Icon }) => (
+              <div className="profile-stat-card" key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <Icon size={18} aria-hidden="true" />
+              </div>
+            ))}
+          </dl>
+
+          <div className="profile-recent">
+            <div className="profile-recent-heading">
+              <h2>Соңғы бақылаулар</h2>
+              <Link to="/history">Тарихқа өту <ArrowRight size={14} /></Link>
+            </div>
+            {activity.loading ? (
+              <p className="profile-activity-empty">Белсенділік жүктелуде…</p>
+            ) : activity.scans.length ? (
+              <div className="profile-recent-list">
+                {activity.scans.map((scan) => (
+                  <article className="profile-recent-item" key={scan.id}>
+                    <img src={scan.imageUrl || "/leaf.svg"} alt="" />
+                    <div>
+                      <strong>{scan.commonName || "Белгісіз өсімдік"}</strong>
+                      <em>{scan.scientificName || "Ғылыми атауы белгісіз"}</em>
+                      <small>{scan.createdAt ? new Date(scan.createdAt).toLocaleDateString("kk-KZ") : ""}</small>
+                    </div>
+                    <span>{scan.accuracy == null ? "—" : `${scan.accuracy}%`}</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="profile-activity-empty">Әзірге сақталған бақылау жоқ.</p>
+            )}
+          </div>
+        </section>
+
         {successMessage && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6">
             <p className="text-green-600 text-sm">{successMessage}</p>
@@ -402,33 +490,6 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Account Stats */}
-        <div className="card border-0 shadow-lg mt-8">
-          <div className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Leaf className="w-5 h-5 text-green-600" />
-              <h2 className="text-xl font-semibold">Аккаунт статистикасы</h2>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <p className="text-2xl font-bold text-green-600">24</p>
-                <p className="text-sm text-gray-600">Жалпы сканерлеу</p>
-              </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">7</p>
-                <p className="text-sm text-gray-600">Осы аптада</p>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <p className="text-2xl font-bold text-purple-600">95%</p>
-                <p className="text-sm text-gray-600">Орташа дәлдік</p>
-              </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <p className="text-2xl font-bold text-orange-600">15</p>
-                <p className="text-sm text-gray-600">Түрлі өсімдік</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
   )

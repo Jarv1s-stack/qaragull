@@ -1,5 +1,5 @@
-const CACHE = "qaragull-shell-v2"
-const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/leaf.svg"]
+const CACHE = "qaragull-shell-v5"
+const APP_SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/mitu-logo.png", "/botanical-hero.jpg", "/botanical-texture.jpg"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()))

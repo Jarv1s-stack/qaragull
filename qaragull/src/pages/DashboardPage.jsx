@@ -127,9 +127,6 @@ const DashboardPage = () => {
               </div>
               <div className="relative">
                 <Scan className="w-12 h-12 text-green-200" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-green-800">!</span>
-                </div>
               </div>
             </div>
           </div>

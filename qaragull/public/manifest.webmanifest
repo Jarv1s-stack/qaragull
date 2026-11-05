@@ -4,7 +4,7 @@
   "description": "Қазақстан өсімдіктеріне арналған далалық зертхана",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f2e9",
-  "theme_color": "#203b32",
-  "icons": [{ "src": "/leaf.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "background_color": "#071510",
+  "theme_color": "#071510",
+  "icons": [{ "src": "/mitu-logo.png", "sizes": "32x32", "type": "image/png", "purpose": "any" }]
 }

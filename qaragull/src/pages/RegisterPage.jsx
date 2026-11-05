@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { ArrowLeft, Eye, EyeOff, Leaf, Lock, Mail, User } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Lock, Mail, User } from "lucide-react"
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({ fullName: "", email: "", password: "", confirmPassword: "" })
@@ -65,7 +65,7 @@ const RegisterPage = () => {
       <section className="auth-layout" aria-labelledby="register-title">
         <div className="auth-form-column">
           <Link to="/" className="brand-lockup auth-brand-lockup">
-            <span className="brand-symbol"><Leaf size={19} aria-hidden="true" /></span>
+            <img className="brand-symbol" src="/mitu-logo.png" alt="" />
             <span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span>
           </Link>
 

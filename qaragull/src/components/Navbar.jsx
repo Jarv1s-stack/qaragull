@@ -25,7 +25,7 @@ export default function Navbar() {
     <header className="app-header">
       <div className="app-header-inner">
         <Link to="/dashboard" className="brand-lockup" aria-label="Qaragull — шолу">
-          <span className="brand-symbol"><Leaf size={20} /></span>
+          <img className="brand-symbol" src="/mitu-logo.png" alt="" />
           <span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span>
         </Link>
         <nav className={"app-nav" + (menuOpen ? " is-open" : "")} aria-label="Жеке кабинет">
@@ -34,6 +34,12 @@ export default function Navbar() {
               <Icon size={17} strokeWidth={1.8} /><span>{label}</span>
             </Link>
           ))}
+          <Link to="/profile" className={"app-mobile-account-link" + (location.pathname === "/profile" ? " active" : "")} aria-current={location.pathname === "/profile" ? "page" : undefined} onClick={() => setMenuOpen(false)}>
+            <UserRound size={17} strokeWidth={1.8} /><span>Профиль</span>
+          </Link>
+          <button type="button" className="app-mobile-logout" onClick={() => { setMenuOpen(false); handleLogout() }}>
+            <LogOut size={17} strokeWidth={1.8} /><span>Шығу</span>
+          </button>
         </nav>
         <div className="app-account">
           <Link to="/profile" className="account-profile" aria-label="Профиль">

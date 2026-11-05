@@ -63,7 +63,7 @@ const LoginPage = () => {
     <div className="auth-page">
       <div className="auth-layout">
         <aside className="auth-aside">
-          <Link to="/" className="brand-lockup"><span className="brand-symbol"><Leaf size={20} /></span><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
+          <Link to="/" className="brand-lockup"><img className="brand-symbol" src="/mitu-logo.png" alt="" /><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
           <div className="auth-aside-art"><span>QG / FIELD NOTES</span><Leaf size={112} strokeWidth={0.8} /></div>
           <p className="eyebrow">ТАБИҒАТТЫ БАЙҚА · БІЛІМДІ ЖИНА</p>
           <h2>Әр бақылау<br />маңызды.</h2>

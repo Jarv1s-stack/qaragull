@@ -1,48 +1,12 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowDown, ArrowRight, ArrowUpRight, Camera, ChevronDown, Flower2, Leaf, Map, Menu, Microscope, ShieldCheck, Sprout, X } from "lucide-react"
+import { ArrowDown, ArrowRight, ArrowUpRight, Camera, ChevronDown, Leaf, Map, Menu, Microscope, ShieldCheck, Sprout, X } from "lucide-react"
 
 const features = [
   { number: "01", icon: Camera, title: "Түрді дәлелде", text: "Арнайы өсімдік тану жүйесі ең ықтимал үш түрді және сәйкестік деңгейін көрсетеді.", to: "/register", tone: "feature-fern" },
   { number: "02", icon: Microscope, title: "Белгіні зертте", text: "Жапырақтағы өзгерістерді талдап, ықтимал себептер мен қауіпсіз келесі қадамдарды ұсынады.", to: "/register", tone: "feature-cream" },
   { number: "03", icon: Map, title: "Флораны картаға түсір", text: "Қазақстан табиғаты бойынша ашық бақылауларды көріп, жеке белгіңді картаға қоса аласың.", to: "/register", tone: "feature-blue" },
 ]
-
-function BotanicalArtwork() {
-  return (
-    <svg className="botanical-art" viewBox="0 0 620 620" role="img" aria-label="Гүл мен жапырақтың ғылыми иллюстрациясы">
-      <defs>
-        <linearGradient id="petal" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#f1bd73" /><stop offset="1" stopColor="#d87b62" /></linearGradient>
-        <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#afbf87" /><stop offset="1" stopColor="#54735e" /></linearGradient>
-      </defs>
-      <circle cx="310" cy="310" r="230" fill="none" stroke="#f4ead0" strokeOpacity=".13" />
-      <circle cx="310" cy="310" r="182" fill="none" stroke="#f4ead0" strokeOpacity=".12" strokeDasharray="2 10" />
-      <g fill="url(#petal)" stroke="#f8ddb0" strokeOpacity=".6" strokeWidth="1.5">
-        <ellipse cx="310" cy="230" rx="48" ry="108" />
-        <ellipse cx="310" cy="230" rx="48" ry="108" transform="rotate(45 310 310)" />
-        <ellipse cx="310" cy="230" rx="48" ry="108" transform="rotate(90 310 310)" />
-        <ellipse cx="310" cy="230" rx="48" ry="108" transform="rotate(135 310 310)" />
-      </g>
-      <circle cx="310" cy="310" r="40" fill="#e6c77f" />
-      <circle cx="310" cy="310" r="24" fill="#bd754d" />
-      <g fill="url(#leaf)" stroke="#d1dbb3" strokeOpacity=".45">
-        <path d="M307 350C250 387 208 450 222 525c65-4 119-51 103-138" />
-        <path d="M321 354c49 30 89 78 84 145-60-7-102-47-95-123" />
-      </g>
-      <g fill="none" stroke="#e5e8cc" strokeOpacity=".55" strokeWidth="2">
-        <path d="M310 348c-7 78-40 132-86 170m91-163c8 48 37 93 75 132m-78-139c-30 39-51 68-79 87m87-82c23 29 46 52 69 69" />
-        <path d="M310 350c-4 86 2 158 1 225" stroke="#b9c794" strokeWidth="4" />
-      </g>
-      <g fill="#e6c77f">
-        <circle cx="309" cy="274" r="4" /><circle cx="338" cy="295" r="4" /><circle cx="322" cy="333" r="4" /><circle cx="289" cy="323" r="4" /><circle cx="287" cy="291" r="4" />
-      </g>
-      <g fill="none" stroke="#f4ead0" strokeOpacity=".38" strokeWidth="1">
-        <path d="M310 35v28m0 494v28M35 310h28m494 0h28" />
-        <circle cx="310" cy="310" r="254" />
-      </g>
-    </svg>
-  )
-}
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -53,7 +17,7 @@ export default function HomePage() {
       <header className="site-header">
         <div className="site-header-inner">
           <Link className="brand-lockup" to="/" aria-label="Qaragull — басты бет">
-            <span className="brand-symbol"><Leaf size={20} strokeWidth={1.8} /></span>
+            <img className="brand-symbol" src="/mitu-logo.png" alt="" />
             <span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span>
           </Link>
           <nav className={"site-nav" + (menuOpen ? " is-open" : "")} aria-label="Негізгі навигация">
@@ -90,9 +54,8 @@ export default function HomePage() {
           </div>
           <div className="hero-specimen">
             <div className="specimen-top"><span><i /> ЖҮЙЕ ДАЙЫН</span><span>BOTANICA / 01</span></div>
-            <BotanicalArtwork />
             <div className="specimen-caption"><span>FIELD STUDY</span><span>43° 14′ N&nbsp; · &nbsp;76° 56′ E</span></div>
-            <div className="specimen-label"><Flower2 size={16} /><span>Flora of Kazakhstan<small>Бақылау арқылы табиғатты түсіну</small></span></div>
+            <div className="specimen-label"><span>Flora of Kazakhstan<small>Бақылау арқылы табиғатты түсіну</small></span></div>
           </div>
           <div className="hero-index" aria-hidden="true">QG—01</div>
         </section>
@@ -133,7 +96,7 @@ export default function HomePage() {
       </main>
 
       <footer className="site-footer">
-        <Link className="brand-lockup" to="/"><span className="brand-symbol"><Leaf size={19} /></span><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
+        <Link className="brand-lockup" to="/"><img className="brand-symbol" src="/mitu-logo.png" alt="" /><span>Qaragull<small>ӨСІМДІК АТЛАСЫ</small></span></Link>
         <p>Далаға мұқият қарау үшін жасалған.</p>
         <span>© {new Date().getFullYear()} Qaragull</span>
       </footer>

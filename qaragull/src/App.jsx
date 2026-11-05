@@ -17,8 +17,8 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
+        <div className="min-h-screen">
+            <Routes>
             {/* Public routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -70,7 +70,7 @@ function App() {
 
             {/* Redirect any unknown routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+            </Routes>
         </div>
       </Router>
     </AuthProvider>

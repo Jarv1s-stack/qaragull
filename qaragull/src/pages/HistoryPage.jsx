@@ -116,9 +116,7 @@ const HistoryPage = () => {
   const showNotification = (message, type) => {
     // Simple notification - can be replaced with toast library
     const notification = document.createElement("div")
-    notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white z-50 ${
-      type === "success" ? "bg-green-500" : "bg-red-500"
-    }`
+    notification.className = `app-notification app-notification-${type}`
     notification.textContent = message
     document.body.appendChild(notification)
 
