@@ -8,7 +8,7 @@ import { User, Mail, Lock, Camera, Eye, EyeOff, Save, Leaf, Loader2, Calendar, A
 import { plantsAPI } from "../services/api"
 
 const ProfilePage = () => {
-  const { user, updateProfile, uploadAvatar, changePassword } = useAuth()
+  const { user, updateProfile, uploadAvatar, changePassword, isGuest } = useAuth()
   const [activeTab, setActiveTab] = useState("profile")
   const [profileData, setProfileData] = useState({
     fullName: user?.fullName || "",
@@ -69,6 +69,10 @@ const ProfilePage = () => {
     const file = event.target.files?.[0]
     event.target.value = ""
     if (!file) return
+    if (isGuest) {
+      setErrors((previous) => ({ ...previous, avatar: "Профиль суретін сақтау үшін аккаунтқа кіріңіз." }))
+      return
+    }
     if (!file.type.startsWith("image/")) {
       setErrors((previous) => ({ ...previous, avatar: "Сурет файлын таңдаңыз" }))
       return
@@ -118,9 +122,9 @@ const ProfilePage = () => {
       newErrors.fullName = "Толық атыңызды енгізіңіз"
     }
 
-    if (!profileData.email.trim()) {
+    if (!isGuest && !profileData.email.trim()) {
       newErrors.email = "Email мекенжайын енгізіңіз"
-    } else if (!/\S+@\S+\.\S+/.test(profileData.email)) {
+    } else if (!isGuest && !/\S+@\S+\.\S+/.test(profileData.email)) {
       newErrors.email = "Дұрыс email мекенжайын енгізіңіз"
     }
 
@@ -269,6 +273,7 @@ const ProfilePage = () => {
         )}
 
         <div className="card border-0 shadow-lg">
+          {isGuest && <div className="mx-6 mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">Қонақ профилі тек осы браузерде қолданылады. Скан мен зертхана жазбалары аккаунтқа байланыстырылмаған.</div>}
           {/* Tabs */}
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6 pt-6">
@@ -282,7 +287,7 @@ const ProfilePage = () => {
               >
                 Жеке ақпарат
               </button>
-              <button
+              {!isGuest && <button
                 onClick={() => setActiveTab("password")}
                 className={`pb-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "password"
@@ -291,7 +296,7 @@ const ProfilePage = () => {
                 }`}
               >
                 Құпия сөз
-              </button>
+              </button>}
             </nav>
           </div>
 
@@ -315,9 +320,9 @@ const ProfilePage = () => {
                       {avatarPreview ? <img src={avatarPreview} alt={`${user?.fullName || "Профиль"} суреті`} /> : <span>{user?.fullName?.charAt(0)?.toUpperCase()}</span>}
                     </div>
                     <div className="text-center">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingAvatar} className="btn btn-secondary">
+                      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploadingAvatar || isGuest} className="btn btn-secondary">
                         {isUploadingAvatar ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
-                        {isUploadingAvatar ? "Сақталуда…" : "Профиль суретін таңдау"}
+                        {isUploadingAvatar ? "Сақталуда…" : isGuest ? "Аккаунтқа кіргенде қолжетімді" : "Профиль суретін таңдау"}
                       </button>
                       <p className="text-xs text-gray-500 mt-2">JPG, PNG немесе WebP · 4 MB дейін</p>
                       {errors.avatar && <p className="text-sm text-red-600 mt-2">{errors.avatar}</p>}
@@ -356,9 +361,10 @@ const ProfilePage = () => {
                           id="email"
                           name="email"
                           type="email"
-                          required
+                          required={!isGuest}
+                          disabled={isGuest}
                           placeholder="example@email.com"
-                          value={profileData.email}
+                          value={isGuest ? "Қонақ режимі" : profileData.email}
                           onChange={handleProfileChange}
                           className={`input pl-10 ${errors.email ? "border-red-500" : ""}`}
                         />

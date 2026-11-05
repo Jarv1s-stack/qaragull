@@ -90,8 +90,8 @@ function MapPanel() {
   const submitObservation = async (event) => {
     event.preventDefault(); setSaving(true); setSaved("")
     try {
-      await labAPI.createCommunityObservation({ ...shareForm, latitude: shareForm.latitude || null, longitude: shareForm.longitude || null, consent: shareForm.consent })
-      setSaved("Жария бақылау жуық координатпен сақталды.")
+      const { data: submission } = await labAPI.createCommunityObservation({ ...shareForm, latitude: shareForm.latitude || null, longitude: shareForm.longitude || null, consent: shareForm.consent })
+      setSaved(submission.localOnly ? "Бақылау тек осы браузерде сақталды; қауымдастыққа жарияланған жоқ." : "Жария бақылау жуық координатпен сақталды.")
       const { data } = await labAPI.getCommunity(); setCommunity(data.cells || [])
       setShareForm({ commonName: "", scientificName: "", issue: "", latitude: "", longitude: "", consent: false })
     } catch (saveError) { setSaved(saveError.response?.data?.error || "Сақтау мүмкін болмады") }

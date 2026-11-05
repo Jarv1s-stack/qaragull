@@ -45,6 +45,7 @@ export default function HomePage() {
             <p className="hero-intro">Қазақстан флорасын таны, бақыла және зертте. Qaragull — табиғатқа мұқият қарауға арналған цифрлық далалық дәптер.</p>
             <div className="hero-actions">
               <Link to="/register" className="button button-dark">Өсімдікті таны <ArrowRight size={17} /></Link>
+              <Link to="/login" className="text-link">Қонақ ретінде көру</Link>
               <a href="#features" className="text-link">Зерттеу <ArrowDown size={15} /></a>
             </div>
             <div className="hero-proof">

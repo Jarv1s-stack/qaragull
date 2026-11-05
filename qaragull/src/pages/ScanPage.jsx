@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 import { labAPI, plantsAPI } from "../services/api"
 import Navbar from "../components/Navbar"
 import {
@@ -20,6 +21,7 @@ import {
 } from "lucide-react"
 
 const ScanPage = () => {
+  const { isGuest } = useAuth()
   const [selectedFile, setSelectedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [isScanning, setIsScanning] = useState(false)
@@ -382,6 +384,7 @@ const ScanPage = () => {
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {isGuest && <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900" role="note">Қонақ режимінде скан нәтижелері мен зертхана жазбалары осы браузерде сақталады. Сурет түрді талдау үшін OpenRouter немесе Pl@ntNet қызметіне жіберілуі мүмкін; Qaragull серверінде сақталмайды. Қонаққа 15 минутта 5 сканға дейін рұқсат.</div>}
         {!plantInfo ? (
           <div className="space-y-6">
             {/* Upload Section */}
@@ -602,9 +605,10 @@ const ScanPage = () => {
               </div>
             </div>
 
-            {plantInfo.followUpQuestions?.length > 0 && <div className="card p-5 border border-gray-100 shadow-md"><h2 className="font-semibold text-gray-800 mb-2">Себебін ажыратуға көмектесіңіз</h2><p className="text-sm text-gray-600 mb-3">{plantInfo.followUpQuestions[0]}</p><form onSubmit={handleFollowUp} className="flex flex-col sm:flex-row gap-3"><input className="input" value={followUpAnswer} onChange={(event) => setFollowUpAnswer(event.target.value)} maxLength={500} placeholder="Қысқаша жауап" /><button className="btn btn-primary" disabled={isRefining || !followUpAnswer.trim()}>{isRefining ? "Талдауда…" : "Жауапты салыстыру"}</button></form><p className="text-xs text-gray-500 mt-2">Жауап мәтіні OpenRouter AI-ға жіберіледі. Жеке дерек жазбаңыз.</p></div>}
+            {isGuest && <p className="scan-identification-notice" role="note">Қонақ сканы браузеріңізде сақталады. Сурет AI талдау қызметіне жіберіледі; Qaragull оны серверде сақтамайды.</p>}
+            {!isGuest && plantInfo.followUpQuestions?.length > 0 && <div className="card p-5 border border-gray-100 shadow-md"><h2 className="font-semibold text-gray-800 mb-2">Себебін ажыратуға көмектесіңіз</h2><p className="text-sm text-gray-600 mb-3">{plantInfo.followUpQuestions[0]}</p><form onSubmit={handleFollowUp} className="flex flex-col sm:flex-row gap-3"><input className="input" value={followUpAnswer} onChange={(event) => setFollowUpAnswer(event.target.value)} maxLength={500} placeholder="Қысқаша жауап" /><button className="btn btn-primary" disabled={isRefining || !followUpAnswer.trim()}>{isRefining ? "Талдауда…" : "Жауапты салыстыру"}</button></form><p className="text-xs text-gray-500 mt-2">Жауап мәтіні OpenRouter AI-ға жіберіледі. Жеке дерек жазбаңыз.</p></div>}
 
-            <div className="card p-5 border border-gray-100 shadow-md"><div className="flex items-center justify-between gap-3 flex-wrap"><div><h2 className="font-semibold text-gray-800">Белгісіз түрді тексеруге жіберу</h2><p className="text-xs text-gray-500 mt-1">Өтініш жеке кезекке сақталады; әзірге қосылған сарапшы жауабы жоқ.</p></div><button className="btn btn-secondary" onClick={sendForReview}>Тексеру кезегіне қосу</button></div>{reviewMessage && <p className="text-sm text-green-800 mt-3" role="status">{reviewMessage}</p>}</div>
+            {!isGuest && <div className="card p-5 border border-gray-100 shadow-md"><div className="flex items-center justify-between gap-3 flex-wrap"><div><h2 className="font-semibold text-gray-800">Белгісіз түрді тексеруге жіберу</h2><p className="text-xs text-gray-500 mt-1">Өтініш жеке кезекке сақталады; әзірге қосылған сарапшы жауабы жоқ.</p></div><button className="btn btn-secondary" onClick={sendForReview}>Тексеру кезегіне қосу</button></div>{reviewMessage && <p className="text-sm text-green-800 mt-3" role="status">{reviewMessage}</p>}</div>}
 
             <div className="text-xs text-gray-500">Қарап шығуға арналған дереккөздер: <a className="text-green-700 underline" href="https://www.inaturalist.org/" target="_blank" rel="noreferrer">iNaturalist түр деректері</a>, <a className="text-green-700 underline" href="https://www.rhs.org.uk/" target="_blank" rel="noreferrer">Royal Horticultural Society күтім нұсқаулығы</a>, <a className="text-green-700 underline" href="https://eppo.int/" target="_blank" rel="noreferrer">EPPO өсімдік денсаулығы</a>. Сілтемелер кеңеске дәлел емес, тек маманмен салыстыруға арналған.</div>
             {plantInfo.identificationSource === "Pl@ntNet" && <div className="plantnet-credit"><a className="plantnet-logo" href="https://my.plantnet.org/" target="_blank" rel="noreferrer"><img src="https://my.plantnet.org/images/plantnet-logo-title-white.png" alt="Pl@ntNet" loading="lazy" /></a><p>The image-based plant species identification service used, is based on the <a href="https://my.plantnet.org/" target="_blank" rel="noreferrer">Pl@ntNet recognition API</a>, regularly updated and accessible through the site https://my.plantnet.org/.</p></div>}

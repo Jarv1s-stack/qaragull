@@ -345,6 +345,68 @@ const identifyPlant = async (req, res) => {
   }
 }
 
+const identifyPlantGuest = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "Сурет файлы табылмады" })
+
+  try {
+    let speciesEvidence = null
+    let identificationNotice = process.env.PLANTNET_API_KEY
+      ? null
+      : "Pl@ntNet кілті қосылмаған; түрді OpenRouter AI бағалады."
+    if (process.env.PLANTNET_API_KEY) {
+      try {
+        speciesEvidence = await identifyWithPlantNet(req.file)
+      } catch (error) {
+        console.error("Guest Pl@ntNet identification unavailable:", error.status || error.message)
+        identificationNotice = "Pl@ntNet уақытша қолжетімсіз; түрді OpenRouter AI бағалайды."
+      }
+      if (!speciesEvidence && !identificationNotice) identificationNotice = "Pl@ntNet бұл суреттен түр ұсына алмады; түрді OpenRouter AI бағалады."
+    }
+
+    let plant
+    try {
+      plant = await analyzePlant(req.file, speciesEvidence)
+    } catch (error) {
+      if (!speciesEvidence) throw error
+      plant = plantNetOnlyAnalysis(speciesEvidence)
+      identificationNotice = "Pl@ntNet түрді ұсынды, бірақ денсаулық талдауы уақытша қолжетімсіз."
+    }
+    plant.identificationNotice = identificationNotice
+
+    return res.json({
+      message: "Қонақ сканы өңделді; сурет пен нәтиже серверде сақталмады.",
+      scan: {
+        id: `guest-${randomUUID()}`,
+        imageUrl: null,
+        commonName: plant.commonName,
+        scientificName: plant.scientificName,
+        description: plant.description,
+        origin: plant.origin,
+        sunlight: plant.sunlight,
+        water: plant.water,
+        growthRate: plant.growthRate,
+        accuracy: plant.accuracy,
+        diagnosis: { ...plant.diagnosis, isUnknown: plant.isUnknown, identificationNotice },
+        candidates: plant.candidates,
+        regions: plant.regions,
+        followUpQuestions: plant.followUpQuestions,
+        isUnknown: plant.isUnknown,
+        identificationSource: plant.identificationSource,
+        identificationNotice,
+        createdAt: new Date().toISOString(),
+      },
+    })
+  } catch (error) {
+    const status = error.isOpenRouterError ? 502 : error.message?.includes("not configured") ? 503 : 500
+    console.error("Guest plant identification failed:", error.response?.status || error.message)
+    return res.status(status).json({
+      error: error.isOpenRouterError
+        ? "AI қызметі уақытша жауап бермеді. Кейінірек қайталап көріңіз."
+        : "Өсімдікті анықтау кезінде қате орын алды",
+    })
+  }
+}
+
 const getUserScans = async (req, res) => {
   try {
     const page = Number.parseInt(req.query.page || "1", 10)
@@ -509,4 +571,4 @@ const refineDiagnosis = async (req, res) => {
   }
 }
 
-module.exports = { identifyPlant, getUserScans, getScanById, deleteScan, getUserStats, refineDiagnosis }
+module.exports = { identifyPlant, identifyPlantGuest, getUserScans, getScanById, deleteScan, getUserStats, refineDiagnosis }

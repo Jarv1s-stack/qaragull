@@ -14,7 +14,7 @@ const LoginPage = () => {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const { login } = useAuth()
+  const { login, enterGuestMode } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [notice, setNotice] = useState("")
@@ -57,6 +57,11 @@ const LoginPage = () => {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleGuestAccess = () => {
+    enterGuestMode()
+    navigate("/dashboard")
   }
 
   return (
@@ -150,6 +155,13 @@ const LoginPage = () => {
                 {isLoading ? "Кіруде..." : "Кіру"}
               </button>
             </form>
+
+            <div className="mt-4">
+              <button type="button" onClick={handleGuestAccess} className="btn btn-secondary w-full">
+                Аккаунтсыз жалғастыру
+              </button>
+              <p className="text-xs text-center text-gray-500 mt-2">Қонақ скандары осы браузерде сақталады.</p>
+            </div>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">

@@ -3,6 +3,9 @@
 import { createContext, useContext, useState, useEffect } from "react"
 import { authAPI } from "../services/api"
 
+const GUEST_MODE_KEY = "qaragull.guestMode"
+const GUEST_NAME_KEY = "qaragull.guestName"
+
 const AuthContext = createContext()
 
 export const useAuth = () => {
@@ -17,9 +20,18 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState(localStorage.getItem("token"))
+  const [isGuest, setIsGuest] = useState(localStorage.getItem(GUEST_MODE_KEY) === "1")
 
   useEffect(() => {
     const initAuth = async () => {
+      if (localStorage.getItem(GUEST_MODE_KEY) === "1") {
+        setUser({ id: "guest", fullName: localStorage.getItem(GUEST_NAME_KEY) || "Қонақ зерттеуші", email: "", isGuest: true })
+        setToken(null)
+        setIsGuest(true)
+        setLoading(false)
+        return
+      }
+
       const savedToken = localStorage.getItem("token")
       if (savedToken) {
         try {
@@ -44,6 +56,8 @@ export const AuthProvider = ({ children }) => {
 
       setToken(newToken)
       setUser(userData)
+      setIsGuest(false)
+      localStorage.removeItem(GUEST_MODE_KEY)
       localStorage.setItem("token", newToken)
 
       return { success: true }
@@ -57,11 +71,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(fullName, email, password)
       const { token: newToken, user: userData, requiresEmailVerification } = response.data
+      localStorage.removeItem(GUEST_MODE_KEY)
+      setIsGuest(false)
 
-      if (requiresEmailVerification) return { success: true, requiresEmailVerification: true }
+      if (requiresEmailVerification) {
+        setUser(null)
+        return { success: true, requiresEmailVerification: true }
+      }
 
       setToken(newToken)
       setUser(userData)
+      setIsGuest(false)
+      localStorage.removeItem(GUEST_MODE_KEY)
       localStorage.setItem("token", newToken)
 
       return { success: true }
@@ -85,9 +106,26 @@ export const AuthProvider = ({ children }) => {
     setToken(null)
     setUser(null)
     localStorage.removeItem("token")
+    localStorage.removeItem(GUEST_MODE_KEY)
+    localStorage.removeItem(GUEST_NAME_KEY)
+    setIsGuest(false)
+  }
+
+  const enterGuestMode = () => {
+    localStorage.removeItem("token")
+    localStorage.setItem(GUEST_MODE_KEY, "1")
+    setToken(null)
+    setUser({ id: "guest", fullName: localStorage.getItem(GUEST_NAME_KEY) || "Қонақ зерттеуші", email: "", isGuest: true })
+    setIsGuest(true)
   }
 
   const updateProfile = async (profileData) => {
+    if (isGuest) {
+      const guestUser = { ...user, fullName: profileData.fullName }
+      setUser(guestUser)
+      localStorage.setItem(GUEST_NAME_KEY, profileData.fullName)
+      return { success: true, user: guestUser }
+    }
     try {
       const response = await authAPI.updateProfile(profileData)
       setUser(response.data.user)
@@ -99,6 +137,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const uploadAvatar = async (file) => {
+    if (isGuest) return { success: false, error: "Профиль суретін сақтау үшін аккаунтқа кіріңіз." }
     try {
       const response = await authAPI.uploadAvatar(file)
       setUser(response.data.user)
@@ -110,6 +149,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const changePassword = async (currentPassword, newPassword) => {
+    if (isGuest) return { success: false, error: "Құпия сөзді басқару үшін аккаунт қажет." }
     try {
       await authAPI.changePassword(currentPassword, newPassword)
       return { success: true }
@@ -125,12 +165,14 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
+    enterGuestMode,
     resendRegistrationLink,
     logout,
     updateProfile,
     uploadAvatar,
     changePassword,
-    isAuthenticated: !!token,
+    isGuest,
+    isAuthenticated: !!token || isGuest,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
